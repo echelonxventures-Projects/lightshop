@@ -24,9 +24,15 @@ beforeAll(async () => {
   const oidc = { OIDC_ISSUER: idp.issuer, OIDC_JWKS_URL: `${idp.issuer}/jwks` };
   catalog = spawn('node', [join(ROOT, 'services/catalog/dist/main.js')], {
     env: { ...process.env, ...oidc, CATALOG_PORT: String(catalogPort), CATALOG_DATABASE_URL: '', SEED_DEMO: 'true', GATEWAY_SHARED_SECRET: SECRET, OTEL_SDK_DISABLED: 'true' },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
-  await eventually(async () => ((await fetch(`http://localhost:${catalogPort}/health`).catch(() => undefined))?.ok ? true : undefined), 20_000);
+  let stderr = '';
+  catalog.stderr?.on('data', (c) => (stderr += c));
+  await eventually(async () => ((await fetch(`http://localhost:${catalogPort}/health`).catch(() => undefined))?.ok ? true : undefined), 30_000).catch(
+    (err: Error) => {
+      throw new Error(`catalog did not become healthy: ${err.message}\n${stderr.slice(-2000)}`);
+    },
+  );
 
   gateway = await startGateway(
     {

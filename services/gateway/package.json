@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@lightshop/testing": "workspace:*",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "@lightshop/catalog-service": "workspace:*"
   }
 }
