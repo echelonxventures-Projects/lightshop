@@ -14,9 +14,13 @@
   "dependencies": {
     "@lightshop/auth": "workspace:*",
     "@lightshop/tenancy": "workspace:*",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "jose": "^5.10.0"
   },
   "devDependencies": {
     "@types/pg": "^8.15.0"
+  },
+  "bin": {
+    "lightshop-mock-oidc": "dist/mock-oidc-cli.js"
   }
 }

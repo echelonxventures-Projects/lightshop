@@ -1,58 +1,46 @@
 import 'server-only';
+import { LightshopApiError, createLightshopClient } from '@lightshop/api-sdk';
+import type { ProductDetail, ProductSummary, VerticalPack } from '@lightshop/api-sdk';
+import { getSession } from './session';
 import { StoreContext } from './tenant';
 
-const ENDPOINT = process.env.CATALOG_GRAPHQL_URL ?? 'http://localhost:4001/graphql';
-/** The storefront server acts as a trusted BFF: it proves itself so services honour x-tenant-id. */
-const GATEWAY_SECRET = process.env.GATEWAY_SHARED_SECRET;
+export type { Offer as OfferView, ProductDetail, ProductSummary } from '@lightshop/api-sdk';
 
-export interface MoneyView { amount: string; currency: string; formatted: string }
-export interface OfferView { id: string; sellerId: string; sku: string; price: MoneyView; stock: number; condition: string; moq: number }
-export interface ProductSummary { id: string; title: string; vertical: string; offers: Array<{ id: string }>; buyBox: OfferView | null }
-export interface ProductDetail extends ProductSummary {
-  description: string | null;
-  categoryPath: string[];
-  attributes: Record<string, unknown>;
-  offers: OfferView[];
-}
-export interface PackView { id: string; name: string; facets: string[] }
+/** Gateway (production) or catalog subgraph (local dev); both speak the same API. */
+const ENDPOINT = process.env.API_URL ?? process.env.CATALOG_GRAPHQL_URL ?? 'http://localhost:4001/graphql';
 
-const OFFER = `id sellerId sku stock condition moq price { amount currency formatted }`;
-
-async function query<T>(store: StoreContext, gql: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-tenant-id': store.tenant.id,
-      'accept-language': store.locale,
-      ...(GATEWAY_SECRET ? { 'x-lightshop-gateway-token': GATEWAY_SECRET } : {}),
-    },
-    body: JSON.stringify({ query: gql, variables }),
-    cache: 'no-store',
+/** The storefront server is a trusted BFF: it selects the tenant explicitly and proves itself with the gateway secret. */
+function client(store: StoreContext, withUser: boolean) {
+  return createLightshopClient({
+    endpoint: ENDPOINT,
+    tenantId: store.tenant.id,
+    gatewaySecret: process.env.GATEWAY_SHARED_SECRET,
+    locale: store.locale,
+    getToken: withUser ? async () => (await getSession(store))?.accessToken : undefined,
   });
-  const body = (await res.json()) as { data?: T; errors?: Array<{ message: string }> };
-  if (body.errors?.length) throw new Error(body.errors.map((e) => e.message).join('; '));
-  return body.data as T;
+}
+
+/**
+ * Public catalog reads: send the user's token (for future personalization) but never let a stale or
+ * revoked token break browsing; fall back to an anonymous request instead.
+ */
+async function read<T>(store: StoreContext, fn: (c: ReturnType<typeof client>) => Promise<T>): Promise<T> {
+  try {
+    return await fn(client(store, true));
+  } catch (err) {
+    if (err instanceof LightshopApiError && err.code === 'UNAUTHENTICATED') return fn(client(store, false));
+    throw err;
+  }
 }
 
 export async function listProducts(store: StoreContext, vertical?: string): Promise<ProductSummary[]> {
-  const data = await query<{ products: { edges: Array<{ node: ProductSummary }> } }>(
-    store,
-    `query($vertical: String) { products(vertical: $vertical, first: 48) { edges { node { id title vertical offers { id } buyBox { ${OFFER} } } } } }`,
-    { vertical },
-  );
-  return data.products.edges.map((e) => e.node);
+  return (await read(store, (c) => c.products({ vertical, first: 48 }))).items;
 }
 
 export async function getProduct(store: StoreContext, id: string): Promise<ProductDetail | null> {
-  const data = await query<{ product: ProductDetail | null }>(
-    store,
-    `query($id: ID!) { product(id: $id) { id title vertical description categoryPath attributes offers { ${OFFER} } buyBox { ${OFFER} } } }`,
-    { id },
-  );
-  return data.product;
+  return read(store, (c) => c.product(id));
 }
 
-export async function listPacks(store: StoreContext): Promise<PackView[]> {
-  return (await query<{ verticalPacks: PackView[] }>(store, `{ verticalPacks { id name facets } }`)).verticalPacks;
+export async function listPacks(store: StoreContext): Promise<VerticalPack[]> {
+  return read(store, (c) => c.verticalPacks());
 }

@@ -28,3 +28,26 @@ test('Unknown host shows store not found', async ({ page }) => {
   expect(res?.status()).toBe(404);
   await expect(page.getByRole('heading', { name: 'Store not found' })).toBeVisible();
 });
+
+test('Sign in with OIDC (code + PKCE), session bound to the store, sign out', async ({ page }) => {
+  await page.goto('http://acme.localhost:3100/');
+  await page.getByRole('link', { name: 'Sign in' }).click();
+  await expect(page.getByTestId('account-name')).toHaveText('Ana Shopper');
+  const cookies = await page.context().cookies('http://acme.localhost:3100');
+  const session = cookies.find((c) => c.name === 'ls_session');
+  expect(session?.httpOnly).toBe(true);
+  expect(session?.value.split('.')).toHaveLength(5); // JWE: encrypted, not readable by scripts or users
+
+  // The same browser session means nothing on another store.
+  await page.goto('http://verde.localhost:3100/');
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+
+  await page.goto('http://acme.localhost:3100/');
+  await page.getByRole('link', { name: 'Sign out' }).click();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+});
+
+test('An account from another store cannot sign in here', async ({ page }) => {
+  await page.goto('http://verde.localhost:3100/auth/login?login_hint=ana@acme');
+  await expect(page.getByTestId('auth-error')).toContainText('belongs to a different store');
+});

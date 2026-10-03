@@ -1,6 +1,6 @@
 import { buildSchema, parse, validate } from 'graphql';
 import { describe, expect, it } from 'vitest';
-import { depthLimit } from './limits';
+import { depthLimit } from './depth-limit';
 
 const schema = buildSchema(`type Node { id: ID! child: Node } type Query { root: Node }`);
 const errors = (q: string, max = 3) => validate(schema, parse(q), [depthLimit(max)]).map((e) => e.message);

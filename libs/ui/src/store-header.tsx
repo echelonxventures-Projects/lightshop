@@ -1,11 +1,15 @@
+import type { ReactNode } from 'react';
+
 export interface StoreHeaderProps {
   brandName: string;
   logoUrl?: string;
   links: Array<{ href: string; label: string }>;
+  /** Right-aligned slot, e.g. sign-in / account links. */
+  actions?: ReactNode;
 }
 
 /** Brand comes entirely from TenantConfig, so nothing in here names a specific store. */
-export function StoreHeader({ brandName, logoUrl, links }: StoreHeaderProps) {
+export function StoreHeader({ brandName, logoUrl, links, actions }: StoreHeaderProps) {
   return (
     <header className="ls-header">
       <div className="ls-container ls-header__inner">
@@ -22,6 +26,7 @@ export function StoreHeader({ brandName, logoUrl, links }: StoreHeaderProps) {
             <a key={l.href} href={l.href}>{l.label}</a>
           ))}
         </nav>
+        {actions && <div className="ls-header__actions">{actions}</div>}
       </div>
     </header>
   );

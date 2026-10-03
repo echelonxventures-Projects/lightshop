@@ -19,11 +19,14 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "server-only": "^0.0.1",
-    "@lightshop/auth": "workspace:*"
+    "@lightshop/auth": "workspace:*",
+    "@lightshop/api-sdk": "workspace:*",
+    "jose": "^5.10.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0"
+    "@types/react-dom": "^19.1.0",
+    "@lightshop/testing": "workspace:*"
   }
 }

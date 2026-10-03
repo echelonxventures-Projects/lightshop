@@ -125,3 +125,40 @@ jobs:
               let n = 0; const t = setTimeout(() => { console.error('only', n, 'events'); process.exit(1); }, 30000);
               await c.run({ eachMessage: async () => { if (++n >= 13) { clearTimeout(t); console.log('received', n, 'catalog events from Kafka'); process.exit(0); } } }); })();
           "
+
+  identity:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run @lightshop/auth:build
+      - name: Start Keycloak with the realm-as-code
+        run: |
+          docker run -d --name keycloak -p 8080:8080 \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+            -v "$PWD/infra/keycloak/lightshop-realm.json:/opt/keycloak/data/import/lightshop-realm.json:ro" \
+            quay.io/keycloak/keycloak:26.2 start-dev --import-realm
+          for i in $(seq 1 60); do curl -sf localhost:8080/realms/lightshop/.well-known/openid-configuration >/dev/null && exit 0; sleep 3; done
+          docker logs keycloak | tail -50; exit 1
+      - name: Keycloak tokens satisfy the LightShop claims contract
+        run: |
+          token() { curl -sf localhost:8080/realms/lightshop/protocol/openid-connect/token \
+            -d grant_type=password -d client_id=lightshop-ci -d client_secret=ci-secret -d scope=openid \
+            -d username=$1 -d password=$1 | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token'; }
+          GADGET=$(token gadgetco) OPS=$(token ops) node -e "
+            const { JwksTokenVerifier } = require('./libs/auth');
+            const v = new JwksTokenVerifier({ issuer: 'http://localhost:8080/realms/lightshop', audience: 'lightshop',
+              jwksUrl: 'http://localhost:8080/realms/lightshop/protocol/openid-connect/certs' });
+            (async () => {
+              const seller = await v.verify(process.env.GADGET);
+              const ops = await v.verify(process.env.OPS);
+              const ok = seller.tenantId === 'acme-mart' && seller.sellerId === 'sel_gadgetco' && seller.roles.includes('seller')
+                && ops.tenantId === '*' && ops.roles.includes('platform:admin');
+              console.log(JSON.stringify({ seller, ops }, null, 2));
+              if (!ok) { console.error('claims contract not satisfied'); process.exit(1); }
+            })().catch((e) => { console.error(e); process.exit(1); });
+          "
