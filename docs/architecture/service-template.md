@@ -25,7 +25,7 @@ services/<name>/
 6. Pick infrastructure through ports from `libs/adapters`. Never import a vendor SDK.
 7. Map application errors to stable GraphQL `extensions.code` values.
 8. Apply the [security baseline](../adr/0009-service-security-baseline.md): authorize in the application layer, trust tenant headers only from the gateway, keep query limits, and fail fast on an unsafe production config.
-9. Expose `/health` (include outbox depth) and OpenTelemetry traces.
+9. Expose `/health` (include outbox depth). Import a `telemetry.ts` first in `main.ts` (`startTelemetry` from `libs/observability`), use `JsonLogger`, and add `integration('TEST_DATABASE_URL')`-gated repository tests using `libs/testing`.
 10. Add the service to the gateway composition, Helm values and CI.
 
 ## Why explicit `@Inject(token)`

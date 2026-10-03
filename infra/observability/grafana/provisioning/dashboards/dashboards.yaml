@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: lightshop
+    folder: LightShop
+    type: file
+    options: { path: /var/lib/grafana/dashboards }

@@ -135,6 +135,10 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
     this.relay.start();
   }
 
+  logReady(port: number, telemetryEnabled: boolean): void {
+    this.logger.log(`catalog subgraph ready at http://localhost:${port}/graphql (telemetry: ${telemetryEnabled ? 'on' : 'off'})`);
+  }
+
   async onApplicationShutdown(): Promise<void> {
     await this.relay.stop();
     await this.bus.close();

@@ -6,3 +6,4 @@ allowBuilds:
   esbuild: true
   nx: true
   "@apollo/protobufjs": false
+  protobufjs: false

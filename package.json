@@ -18,7 +18,8 @@
     "infra:down": "docker compose down",
     "dev:catalog": "pnpm --filter @lightshop/catalog-service dev",
     "dev:web": "pnpm --filter @lightshop/web-storefront dev",
-    "dev:token": "node libs/auth/dist/dev-token-cli.js"
+    "dev:token": "node libs/auth/dist/dev-token-cli.js",
+    "infra:up:obs": "docker compose --profile observability up -d"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

@@ -14,5 +14,8 @@
   "dependencies": {
     "@lightshop/domain-kernel": "workspace:*",
     "kafkajs": "^2.2.4"
+  },
+  "devDependencies": {
+    "@lightshop/testing": "workspace:*"
   }
 }

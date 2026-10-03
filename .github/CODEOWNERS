@@ -1,0 +1,11 @@
+# Default owner until squads are created as GitHub teams.
+# When teams exist, replace with e.g. @echelonxventures-Projects/platform (see docs/roadmap.md, team topology).
+*                         @echelonxventures-Projects
+
+# Contracts are public API: changes need platform review.
+/libs/contracts/          @echelonxventures-Projects
+# Security-sensitive code.
+/libs/auth/               @echelonxventures-Projects
+/services/identity/       @echelonxventures-Projects
+/infra/                   @echelonxventures-Projects
+/.github/workflows/       @echelonxventures-Projects

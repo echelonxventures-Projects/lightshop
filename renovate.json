@@ -1,0 +1,104 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitsDisabled",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "description": "Policy from docs/adr/0008-dependency-versions.md: grouped minor/patch weekly, majors one at a time.",
+  "timezone": "UTC",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 8,
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": [
+      "before 6am on the first day of the month"
+    ]
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": [
+      "at any time"
+    ],
+    "labels": [
+      "security"
+    ]
+  },
+  "packageRules": [
+    {
+      "description": "Group all non-major npm updates into one weekly PR",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "npm non-major"
+    },
+    {
+      "description": "Majors are reviewed individually, never automerged",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true,
+      "labels": [
+        "major-upgrade"
+      ]
+    },
+    {
+      "groupName": "nestjs",
+      "matchPackageNames": [
+        "/^@nestjs\\//"
+      ]
+    },
+    {
+      "groupName": "opentelemetry",
+      "matchPackageNames": [
+        "/^@opentelemetry\\//"
+      ]
+    },
+    {
+      "groupName": "temporal",
+      "matchPackageNames": [
+        "/^@temporalio\\//"
+      ]
+    },
+    {
+      "groupName": "graphql",
+      "matchPackageNames": [
+        "/^@apollo\\//",
+        "/^graphql$/"
+      ]
+    },
+    {
+      "matchPackageNames": [
+        "next",
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom"
+      ],
+      "groupName": "next and react"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "github actions"
+    },
+    {
+      "matchManagers": [
+        "terraform",
+        "helmv3",
+        "helm-values",
+        "docker-compose",
+        "dockerfile"
+      ],
+      "groupName": "infrastructure"
+    }
+  ]
+}

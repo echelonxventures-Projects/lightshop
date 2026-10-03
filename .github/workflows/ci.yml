@@ -68,3 +68,60 @@ jobs:
           curl -sf localhost:4001/health | tee /dev/stderr | grep -q '"outboxPending":0'
           curl -sf localhost:4001/graphql -H 'content-type: application/json' -H 'x-tenant-id: acme-mart' \
             -d '{"query":"{ products { edges { node { id } } } }"}' | grep -q prd_demo_phone
+
+  integration:
+    needs: verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: lightshop, POSTGRES_PASSWORD: lightshop, POSTGRES_DB: lightshop }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U lightshop" --health-interval 5s --health-retries 10
+      kafka:
+        image: apache/kafka:3.9.1
+        ports: ["9092:9092"]
+        env:
+          KAFKA_NODE_ID: 1
+          KAFKA_PROCESS_ROLES: broker,controller
+          KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+          KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run-many -t build -p @lightshop/catalog-service @lightshop/adapters @lightshop/testing
+      - name: Wait for Kafka
+        run: for i in $(seq 1 30); do (echo > /dev/tcp/localhost/9092) 2>/dev/null && exit 0; sleep 2; done; exit 1
+      - name: Integration tests (real Postgres + Kafka)
+        env:
+          TEST_DATABASE_URL: postgres://lightshop:lightshop@localhost:5432/lightshop
+          TEST_KAFKA_BROKERS: localhost:9092
+        run: |
+          pnpm --filter @lightshop/catalog-service exec vitest run test/postgres.integration.test.ts
+          pnpm --filter @lightshop/adapters exec vitest run src/events/kafka-event-bus.integration.test.ts
+      - name: End-to-end event flow (catalog → outbox → Kafka)
+        env:
+          CATALOG_DATABASE_URL: postgres://lightshop:lightshop@localhost:5432/lightshop
+          EVENT_BUS: kafka
+          KAFKA_BROKERS: localhost:9092
+          SEED_DEMO: "true"
+        run: |
+          node services/catalog/dist/main.js & sleep 8
+          curl -sf localhost:4001/health | tee /dev/stderr | grep -q '"outboxPending":0'
+          node -e "
+            const { Kafka } = require('./libs/adapters/node_modules/kafkajs');
+            const c = new Kafka({ brokers: ['localhost:9092'] }).consumer({ groupId: 'ci-check' });
+            (async () => { await c.connect(); await c.subscribe({ topic: 'catalog.product.v1', fromBeginning: true });
+              let n = 0; const t = setTimeout(() => { console.error('only', n, 'events'); process.exit(1); }, 30000);
+              await c.run({ eachMessage: async () => { if (++n >= 13) { clearTimeout(t); console.log('received', n, 'catalog events from Kafka'); process.exit(0); } } }); })();
+          "
