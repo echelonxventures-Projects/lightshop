@@ -34,6 +34,9 @@ libs/adapters           Ports + open-source default adapters (events, payments, 
 libs/vertical-packs     Industry packs (general, electronics, fashion, grocery, industrial, pharmacy)
 libs/contracts          GraphQL subgraph SDL + domain event contracts
 libs/ui                 Token-driven design system + Storybook
+libs/auth               OIDC/JWKS token verification, roles, dev tokens, gateway trust
+libs/observability      OpenTelemetry bootstrap (OTLP, any backend) + trace-correlated JSON logs
+libs/testing            Fixtures, dev tokens, throwaway Postgres DBs, integration-test gating
 config/tenants          One JSON file per store
 infra/                  Helm chart, ArgoCD ApplicationSet, cloud-neutral Terraform, local compose init
 docs/                   Architecture, ADRs, 24 PRDs, roadmap & estimates, guides, runbooks
@@ -47,7 +50,8 @@ docs/                   Architecture, ADRs, 24 PRDs, roadmap & estimates, guides
 | `pnpm affected` | Lint/test/build only what changed |
 | `pnpm --filter @lightshop/web-storefront e2e` | Playwright: two tenants, one deployment |
 | `pnpm --filter @lightshop/ui storybook` | Design system on :6006 |
-| `pnpm infra:up` / `pnpm infra:up:full` | Local Postgres + Kafka / + Valkey, OpenSearch, Temporal, Keycloak, S3 storage |
+| `pnpm infra:up` / `pnpm infra:up:full` | Local Postgres + Kafka / + Valkey, OpenSearch, Temporal, Keycloak, S3 storage, observability |
+| `pnpm infra:up:obs` | OTel Collector + Tempo + Prometheus + Grafana (:3001) |
 
 ## Documentation
 

@@ -1,5 +1,6 @@
 import { AuthError, GATEWAY_TOKEN_HEADER, Principal, TokenVerifier, isTrustedGateway } from '@lightshop/auth';
 import { LOCALE_HEADER, REGION_HEADER, TENANT_HEADER } from '@lightshop/domain-kernel';
+import { annotateActiveSpan } from '@lightshop/observability';
 import { TenantRegistry } from '@lightshop/tenancy';
 import type { Request } from 'express';
 import { CatalogError } from '../application/errors';
@@ -52,6 +53,8 @@ export async function buildContext(req: Request, deps: ContextDeps): Promise<Gql
 
   const pick = (wanted: string | undefined, allowed: string[]) =>
     (wanted && allowed.find((a) => a.toLowerCase() === wanted.toLowerCase())) ?? allowed[0]!;
+  const region = pick(header(REGION_HEADER), tenant.regions);
+  annotateActiveSpan({ tenantId: tenant.id, region, userId: principal?.userId });
 
   return {
     req,
@@ -59,7 +62,7 @@ export async function buildContext(req: Request, deps: ContextDeps): Promise<Gql
     ctx: {
       tenant,
       tenantId: tenant.id,
-      region: pick(header(REGION_HEADER), tenant.regions),
+      region,
       locale: matchLocale(header(LOCALE_HEADER)?.split(',')[0]?.split(';')[0], tenant.locales),
       currency: pick(header('x-currency'), tenant.currencies),
       principal,

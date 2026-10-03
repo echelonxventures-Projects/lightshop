@@ -51,6 +51,17 @@ pnpm --filter @lightshop/web-storefront e2e      # Playwright: two tenants on on
 pnpm --filter @lightshop/ui storybook            # design system on :6006
 ```
 
+Integration tests run against real services only when you provide them (CI always does):
+
+```bash
+TEST_DATABASE_URL=postgres://lightshop:lightshop@localhost:5432/lightshop \
+  pnpm --filter @lightshop/catalog-service exec vitest run test/postgres.integration.test.ts
+TEST_KAFKA_BROKERS=localhost:9092 \
+  pnpm --filter @lightshop/adapters exec vitest run src/events/kafka-event-bus.integration.test.ts
+```
+
+Observability (traces, metrics, Grafana): see [observability](observability.md).
+
 ## Troubleshooting
 
 | Symptom | Fix |

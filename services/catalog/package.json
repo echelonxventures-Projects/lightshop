@@ -30,7 +30,8 @@
     "pg": "^8.16.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "@lightshop/auth": "workspace:*"
+    "@lightshop/auth": "workspace:*",
+    "@lightshop/observability": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.0",
@@ -38,6 +39,7 @@
     "@types/pg": "^8.15.0",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "@lightshop/testing": "workspace:*"
   }
 }
