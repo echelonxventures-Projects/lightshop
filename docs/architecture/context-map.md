@@ -4,7 +4,7 @@ Each bounded context is one service (or a small group) owned by one team. Each c
 
 | # | Context | Service(s) | Owns | Publishes | Consumes | Phase |
 |---|---|---|---|---|---|---|
-| 1 | Identity & Accounts | `identity` | users, orgs, roles, consents, KYC/KYB status | `identity.user.v1`, `identity.org.v1` | — | 0 |
+| 1 | Identity & Accounts | `identity` (IdP + auth ✅, subgraph Phase 1) | users, orgs, roles, consents, KYC/KYB status | `identity.user.v1`, `identity.org.v1` | — | 0 |
 | 2 | Tenant Registry | `tenant-registry` ✅ | TenantConfig, domains, adapter credentials refs | `tenancy.tenant.v1` | — | 0–1 |
 | 3 | Catalog & PIM | `catalog` ✅ | products, variants, offers, vertical packs | `catalog.product.v1` | `seller.account.v1` | 0 |
 | 4 | Search & Discovery | `search` | search indexes, synonyms, merch rules | `search.query.v1` (analytics) | `catalog.*`, `pricing.*`, `inventory.*` | 1 |

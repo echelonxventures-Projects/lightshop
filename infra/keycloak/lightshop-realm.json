@@ -1,0 +1,308 @@
+{
+  "realm": "lightshop",
+  "displayName": "LightShop",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 28800,
+  "roles": {
+    "realm": [
+      {
+        "name": "buyer",
+        "description": "Consumer or business buyer"
+      },
+      {
+        "name": "seller",
+        "description": "Marketplace seller / supplier"
+      },
+      {
+        "name": "catalog:admin",
+        "description": "Manages the store catalog"
+      },
+      {
+        "name": "tenant:admin",
+        "description": "Manages one store's configuration"
+      },
+      {
+        "name": "platform:admin",
+        "description": "LightShop operator (all stores)"
+      }
+    ]
+  },
+  "clientScopes": [
+    {
+      "name": "lightshop",
+      "description": "LightShop claims contract: tenant_id, roles, seller_id, org_id, aud=lightshop",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "tenant_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "seller_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "seller_id",
+            "claim.name": "seller_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "org_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "org_id",
+            "claim.name": "org_id",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "lightshop",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "lightshop-storefront",
+      "name": "LightShop storefront (all white-label stores)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dev-storefront-secret-change-me",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://*.localhost:5678/auth/callback",
+        "http://localhost:5678/auth/callback"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://*.localhost:5678/*##http://localhost:5678/*"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "lightshop"
+      ]
+    },
+    {
+      "clientId": "lightshop-ci",
+      "name": "CI / local token testing only. Remove in real environments.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ci-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "lightshop"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "ana",
+      "email": "ana@acme.example",
+      "firstName": "Ana",
+      "lastName": "Shopper",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "acme-mart"
+        ]
+      },
+      "realmRoles": [
+        "buyer"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ana",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "acme-admin",
+      "email": "admin@acme.example",
+      "firstName": "Acme",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "acme-mart"
+        ]
+      },
+      "realmRoles": [
+        "catalog:admin",
+        "tenant:admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "acme-admin",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "gadgetco",
+      "email": "ops@gadgetco.example",
+      "firstName": "Gadget",
+      "lastName": "Co",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "acme-mart"
+        ],
+        "seller_id": [
+          "sel_gadgetco"
+        ]
+      },
+      "realmRoles": [
+        "seller"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "gadgetco",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "raj",
+      "email": "raj@verde.example",
+      "firstName": "Raj",
+      "lastName": "Buyer",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "verde-wholesale"
+        ],
+        "org_id": [
+          "org_raj_traders"
+        ]
+      },
+      "realmRoles": [
+        "buyer"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "raj",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ops",
+      "email": "ops@lightshop.example",
+      "firstName": "Platform",
+      "lastName": "Ops",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "*"
+        ]
+      },
+      "realmRoles": [
+        "platform:admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ops",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"unmanagedAttributePolicy\": \"ADMIN_VIEW\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"tenant_id\", \"displayName\": \"Store\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"seller_id\", \"displayName\": \"Seller account\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"org_id\", \"displayName\": \"Business organization\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}], \"groups\": []}"
+          ]
+        }
+      }
+    ]
+  }
+}

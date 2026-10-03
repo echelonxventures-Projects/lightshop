@@ -20,7 +20,9 @@
     "dev:web": "pnpm --filter @lightshop/web-storefront dev",
     "dev:token": "node libs/auth/dist/dev-token-cli.js",
     "infra:up:obs": "docker compose --profile observability up -d",
-    "dev:registry": "pnpm --filter @lightshop/tenant-registry dev"
+    "dev:registry": "pnpm --filter @lightshop/tenant-registry dev",
+    "infra:up:identity": "docker compose --profile identity up -d",
+    "dev:gateway": "pnpm --filter @lightshop/gateway dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

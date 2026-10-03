@@ -6,6 +6,8 @@ import { StoreHeader } from '@lightshop/ui';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { listPacks } from '../lib/catalog';
+import { oidcSettings } from '../lib/oidc';
+import { getSession } from '../lib/session';
 import { getStore } from '../lib/tenant';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +32,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
   const { tenant, locale } = store;
   const packs = await listPacks(store).catch(() => []);
+  const session = await getSession(store);
+  const signIn = oidcSettings() !== undefined;
   return (
     <html lang={locale} dir={isRtl(locale) ? 'rtl' : 'ltr'} data-tenant={tenant.id}>
       <head>
@@ -41,6 +45,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           brandName={tenant.brand.name}
           logoUrl={tenant.brand.logoUrl}
           links={packs.map((p) => ({ href: `/c/${p.id}`, label: p.name }))}
+          actions={
+            session ? (
+              <>
+                <span data-testid="account-name">{session.name ?? session.email ?? 'Account'}</span>
+                <a href="/auth/logout">Sign out</a>
+              </>
+            ) : signIn ? (
+              <a href="/auth/login">Sign in</a>
+            ) : undefined
+          }
         />
         <main className="ls-container sf-main">{children}</main>
         <footer className="sf-footer">

@@ -89,6 +89,8 @@ a { color: inherit; }
 .ls-header__nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
 .ls-header__nav a { text-decoration: none; color: var(--ls-color-text-muted); }
 .ls-header__nav a:hover { color: var(--ls-color-text); }
+.ls-header__actions { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.ls-header__actions a { color: var(--ls-color-text); }
 
 .ls-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .ls-table th, .ls-table td { text-align: left; padding: 8px 0; border-bottom: 1px solid var(--ls-color-border); vertical-align: top; }

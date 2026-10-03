@@ -1,0 +1,19 @@
+{
+  "name": "@lightshop/api-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the LightShop public GraphQL API (web, mobile, partners, BFFs). Zero runtime dependencies; uses fetch.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@lightshop/contracts": "workspace:*",
+    "@theguild/federation-composition": "^0.27.0",
+    "graphql": "^16.11.0"
+  }
+}

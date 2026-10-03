@@ -8,6 +8,7 @@ pnpm build
 pnpm dev:catalog   # catalog subgraph on :4001 (in-memory storage + events, demo data seeded)
 pnpm dev:web       # storefront on :5678
 pnpm dev:registry  # optional: tenant-registry on :4002 (then set TENANTS_URL for catalog/web)
+pnpm dev:gateway   # optional: public GraphQL edge on :4000 (set API_URL=http://localhost:4000/graphql for web)
 ```
 
 `pnpm dev:catalog` turns on demo data (`SEED_DEMO=true`). It is off by default everywhere else.
@@ -26,6 +27,18 @@ curl -s localhost:4001/graphql -H 'content-type: application/json' -H 'host: acm
 ```
 
 Sellers: `--roles seller --seller sel_kora` (they can only add offers for `sel_kora`). Production uses a real OIDC provider (`OIDC_ISSUER`). See [ADR-0009](../adr/0009-service-security-baseline.md).
+
+## Sign-in (OIDC)
+
+```bash
+pnpm infra:up:identity     # Keycloak with infra/keycloak/lightshop-realm.json (needs Docker)
+export OIDC_ISSUER=http://localhost:8080/realms/lightshop
+OIDC_CLIENT_ID=lightshop-storefront OIDC_CLIENT_SECRET=dev-storefront-secret-change-me \
+  SESSION_SECRET=$(openssl rand -hex 32) pnpm dev:web
+OIDC_JWKS_URL=$OIDC_ISSUER/protocol/openid-connect/certs pnpm dev:catalog
+```
+
+Sign in at http://acme.localhost:5678 as `ana` / `ana`. Without Docker, `node libs/testing/dist/mock-oidc-cli.js` starts a protocol-level mock provider on :4400 (client secret `mock-secret`).
 
 ## With real infrastructure
 

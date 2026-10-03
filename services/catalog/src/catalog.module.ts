@@ -1,6 +1,7 @@
 import { unwrapResolverError } from '@apollo/server/errors';
 import { EventBus, InMemoryEventBus, KafkaEventBus } from '@lightshop/adapters';
 import { DevTokenVerifier, GATEWAY_TOKEN_HEADER, JwksTokenVerifier, TokenVerifier } from '@lightshop/auth';
+import { depthLimit } from '@lightshop/graphql-security';
 import { OutboxRelay } from '@lightshop/outbox';
 import { schemaPath } from '@lightshop/contracts';
 import { FileTenantSource, HttpTenantSource, LiveTenantRegistry, TenantLookup } from '@lightshop/tenancy';
@@ -16,7 +17,6 @@ import { CatalogConfig } from './config';
 import { CatalogErrorFilter } from './graphql/catalog-error.filter';
 import { buildContext } from './graphql/context';
 import { JSONScalar } from './graphql/json.scalar';
-import { depthLimit } from './graphql/limits';
 import { OfferResolver, ProductResolver, VerticalPackResolver } from './graphql/catalog.resolver';
 import { HealthController } from './health.controller';
 import { InMemoryProductRepository } from './infrastructure/memory-product-repository';

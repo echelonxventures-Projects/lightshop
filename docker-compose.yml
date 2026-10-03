@@ -71,9 +71,10 @@ services:
     ports: ["8233:8080"]
 
   keycloak:
-    profiles: [full]
+    profiles: [full, identity]
     image: quay.io/keycloak/keycloak:26.2
-    command: start-dev
+    command: start-dev --import-realm
+    volumes: ["./infra/keycloak/lightshop-realm.json:/opt/keycloak/data/import/lightshop-realm.json:ro"]
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin

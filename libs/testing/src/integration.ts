@@ -45,3 +45,16 @@ export async function eventually<T>(check: () => T | undefined | Promise<T | und
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
+
+/** A currently free TCP port on localhost (for spawning services in tests). */
+export async function freePort(): Promise<number> {
+  const { createServer } = await import('node:net');
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.once('error', reject);
+    srv.listen(0, () => {
+      const port = (srv.address() as import('node:net').AddressInfo).port;
+      srv.close(() => resolve(port));
+    });
+  });
+}

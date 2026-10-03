@@ -1,0 +1,17 @@
+{
+  "name": "@lightshop/graphql-security",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GraphQL cost controls shared by the gateway and subgraphs: depth limit, token limit.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "graphql": "^16.11.0"
+  }
+}
