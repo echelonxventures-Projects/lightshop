@@ -1,0 +1,43 @@
+# One Postgres cluster per cell (CloudNativePG), one database per service (database-per-service).
+# Skip this file if the cell uses a managed Postgres; then create the same databases there.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: lightshop-pg
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  storage: { size: 50Gi }
+  postgresql:
+    parameters: { max_connections: "400" }
+  bootstrap:
+    initdb: { database: catalog, owner: catalog }
+  managed:
+    roles:
+      - { name: tenant_registry, ensure: present, login: true, passwordSecret: { name: tenant-registry-db } }
+      - { name: temporal, ensure: present, login: true, passwordSecret: { name: temporal-db } }
+      - { name: keycloak, ensure: present, login: true, passwordSecret: { name: keycloak-db } }
+  # Point-in-time recovery to any S3-compatible store (S3, GCS interop, Azure via gateway, SeaweedFS, MinIO...).
+  # backup:
+  #   barmanObjectStore: { destinationPath: s3://lightshop-backups/<cell>, s3Credentials: { ... } }
+  #   retentionPolicy: 30d
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: tenant-registry }
+spec: { cluster: { name: lightshop-pg }, name: tenant_registry, owner: tenant_registry }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: temporal }
+spec: { cluster: { name: lightshop-pg }, name: temporal, owner: temporal }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: temporal-visibility }
+spec: { cluster: { name: lightshop-pg }, name: temporal_visibility, owner: temporal }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata: { name: keycloak }
+spec: { cluster: { name: lightshop-pg }, name: keycloak, owner: keycloak }

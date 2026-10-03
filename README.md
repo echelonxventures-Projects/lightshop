@@ -43,7 +43,7 @@ libs/outbox             Transactional outbox stores + relay shared by all servic
 libs/api-sdk            Typed client for the public API (web, mobile, partners, BFFs)
 libs/graphql-security   Query depth/token limits shared by gateway and subgraphs
 config/tenants          One JSON file per store
-infra/                  Helm chart, ArgoCD ApplicationSet, cloud-neutral Terraform, local compose init
+infra/                  Terraform cells (AWS/GCP/Azure/on-prem, one contract), Helm charts, ArgoCD, platform manifests, images
 docs/                   Architecture, ADRs, 24 PRDs, roadmap & estimates, guides, runbooks
 ```
 

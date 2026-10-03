@@ -162,3 +162,92 @@ jobs:
               if (!ok) { console.error('claims contract not satisfied'); process.exit(1); }
             })().catch((e) => { console.error(e); process.exit(1); });
           "
+
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_wrapper: false }
+      - name: Terraform fmt + cell contract
+        run: |
+          terraform fmt -check -recursive infra/terraform
+          python3 infra/terraform/scripts/check-contract.py
+      - name: Terraform validate (every cloud)
+        run: |
+          for env in aws gcp azure on-prem; do
+            echo "::group::$env"
+            terraform -chdir=infra/terraform/envs/$env init -backend=false -input=false >/dev/null
+            terraform -chdir=infra/terraform/envs/$env validate
+            echo "::endgroup::"
+          done
+      - uses: azure/setup-helm@v4
+      - name: Helm lint + render + Kubernetes schema validation
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          helm lint infra/helm/lightshop-service
+          helm dependency update infra/helm/lightshop
+          for env in staging production; do
+            helm lint infra/helm/lightshop -f infra/helm/lightshop/values/env/$env.yaml -f infra/helm/lightshop/values/cells/example.yaml
+            helm template ls infra/helm/lightshop -f infra/helm/lightshop/values/env/$env.yaml -f infra/helm/lightshop/values/cells/example.yaml \
+              | ./kubeconform -strict -summary -kubernetes-version 1.33.0
+          done
+      - name: Platform manifests and ArgoCD definitions parse
+        run: |
+          kubectl kustomize infra/k8s/platform > /dev/null
+          python3 -c "import yaml,glob; [list(yaml.safe_load_all(open(f))) for f in glob.glob('infra/argocd/**/*.yaml', recursive=True)]"
+
+  images:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Image coordinates
+        id: img
+        run: |
+          # Registry is configurable (repo/org variable IMAGE_REGISTRY): GHCR, ECR, GAR, ACR, Harbor, Quay...
+          REG="${{ vars.IMAGE_REGISTRY }}"
+          [ -z "$REG" ] && REG="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/lightshop"
+          echo "registry=$REG" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_SHA::12}" >> $GITHUB_OUTPUT
+      - name: Build images
+        run: |
+          set -e
+          build() { docker buildx build --load --cache-from type=gha,scope=$1 --cache-to type=gha,mode=max,scope=$1 \
+            --build-arg VERSION=${{ steps.img.outputs.tag }} -t "${{ steps.img.outputs.registry }}/$1:${{ steps.img.outputs.tag }}" "${@:2}" .; }
+          build catalog         -f infra/docker/node-service.Dockerfile --build-arg PACKAGE=@lightshop/catalog-service
+          build tenant-registry -f infra/docker/node-service.Dockerfile --build-arg PACKAGE=@lightshop/tenant-registry
+          build gateway         -f infra/docker/node-service.Dockerfile --build-arg PACKAGE=@lightshop/gateway
+          build web-storefront  -f apps/web-storefront/Dockerfile
+      - name: Smoke test the images as a running stack
+        run: |
+          set -e
+          R="${{ steps.img.outputs.registry }}"; T="${{ steps.img.outputs.tag }}"
+          docker network create ls
+          common="--network ls --read-only --tmpfs /tmp -e NODE_ENV=development -e GATEWAY_SHARED_SECRET=ci-smoke-secret"
+          docker run -d --name tenant-registry $common -e SEED_TENANTS_DIR=/app/config/tenants "$R/tenant-registry:$T"
+          docker run -d --name catalog $common -e SEED_DEMO=true -e TENANTS_URL='http://tenant-registry:4002/v1/tenants?status=live' "$R/catalog:$T"
+          sleep 8
+          docker run -d --name gateway $common -p 4000:4000 -e SUBGRAPHS=catalog=http://catalog:4001/graphql \
+            -e TENANTS_URL='http://tenant-registry:4002/v1/tenants?status=live' "$R/gateway:$T"
+          docker run -d --name web $common --tmpfs /app/apps/web-storefront/.next/cache -p 5678:5678 \
+            -e API_URL=http://gateway:4000/graphql -e TENANTS_URL='http://tenant-registry:4002/v1/tenants?status=live' "$R/web-storefront:$T"
+          for i in $(seq 1 30); do curl -sf localhost:5678/api/health >/dev/null && curl -sf localhost:4000/health >/dev/null && break; sleep 2; done
+          curl -sf -H 'Host: acme.localhost' localhost:4000/graphql -H 'content-type: application/json' \
+            -d '{"query":"{ products { edges { node { id } } } }"}' | tee /dev/stderr | grep -q prd_demo_phone
+          curl -sf -H 'Host: verde.localhost' localhost:5678/ | grep -q '<title>Verde Wholesale</title>'
+          echo "stack OK: registry → catalog → gateway → storefront, read-only root filesystems"
+      - name: Container logs on failure
+        if: failure()
+        run: for c in tenant-registry catalog gateway web; do echo "== $c"; docker logs $c 2>&1 | tail -40; done
+      - name: Push (main only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.IMAGE_REGISTRY_TOKEN || secrets.GITHUB_TOKEN }}" | docker login "${{ steps.img.outputs.registry }}" -u "${{ vars.IMAGE_REGISTRY_USER || github.actor }}" --password-stdin
+          for i in catalog tenant-registry gateway web-storefront; do
+            docker push "${{ steps.img.outputs.registry }}/$i:${{ steps.img.outputs.tag }}"
+          done

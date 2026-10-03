@@ -1,0 +1,24 @@
+# Copy per cell (e.g. values/cells/us.yaml, values/cells/in.yaml). Nothing here is cloud-specific except
+# optional workload-identity annotations.
+global:
+  region: example                         # cell code: becomes REGION, span/metric attribute, data-residency label
+  env:
+    OIDC_ISSUER: https://id.example.com/realms/lightshop
+    OIDC_JWKS_URL: https://id.example.com/realms/lightshop/protocol/openid-connect/certs
+    OIDC_CLIENT_ID: lightshop-storefront
+gateway:
+  ingress:
+    className: traefik                    # or envoy, haproxy, nginx, alb, gce...
+    hosts: [api.example.com]
+  networkPolicy:
+    allowFromNamespaces: [traefik]
+webStorefront:
+  ingress:
+    className: traefik
+    hosts: [shop.example.com, www.brand-two.example]
+  networkPolicy:
+    allowFromNamespaces: [traefik]
+# Workload identity for cloud APIs (only if a service needs one):
+# catalog:
+#   serviceAccount:
+#     annotations: { eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/lightshop-catalog }

@@ -1,0 +1,8 @@
+global:
+  environment: staging
+gateway:
+  autoscaling: { minReplicas: 2, maxReplicas: 6 }
+catalog:
+  autoscaling: { minReplicas: 2, maxReplicas: 6 }
+webStorefront:
+  autoscaling: { minReplicas: 2, maxReplicas: 6 }

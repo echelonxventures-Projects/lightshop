@@ -1,0 +1,95 @@
+# Defaults shared by every environment and cell. Layer: values.yaml → values/env/<env>.yaml → values/cells/<cell>.yaml
+global:
+  imageRegistry: ghcr.io/echelonxventures-projects/lightshop
+  imageTag: ""            # set by CI/CD to the git SHA
+  region: unset           # cell code, e.g. us | eu | in | sea | anything
+  environment: unset
+  imagePullSecrets: []
+  # Env for every workload. Endpoints are cell-local service DNS names or managed-service endpoints.
+  env:
+    NODE_ENV: production
+    LOG_FORMAT: json
+    EVENT_BUS: kafka
+    KAFKA_BROKERS: lightshop-kafka-kafka-bootstrap:9092
+    OIDC_AUDIENCE: lightshop
+    OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    TENANTS_URL: http://tenant-registry/v1/tenants?status=live
+    TENANTS_REFRESH_MS: "15000"
+  # Secrets every workload needs. Create them with External Secrets Operator (any backend) or kubectl.
+  secretEnv:
+    GATEWAY_SHARED_SECRET: { secret: lightshop-shared, key: gateway-shared-secret }
+
+gateway:
+  name: gateway
+  port: 4000
+  env:
+    SUBGRAPHS: catalog=http://catalog/graphql
+    RATE_LIMIT_PER_MINUTE: "600"
+    TRUST_PROXY: "true"
+  ingress:
+    enabled: true
+    hosts: []             # api host(s) per cell, e.g. api.us.example.com
+  networkPolicy:
+    enabled: true
+    allowFromPods:
+      - app.kubernetes.io/name: web-storefront
+    allowFromNamespaces: []   # add your ingress controller namespace
+
+catalog:
+  name: catalog
+  port: 4001
+  secretEnv:
+    CATALOG_DATABASE_URL: { secret: lightshop-catalog-db, key: url }
+  networkPolicy:
+    enabled: true
+    allowFromPods:
+      - app.kubernetes.io/name: gateway
+      - app.kubernetes.io/name: web-storefront
+
+tenantRegistry:
+  name: tenant-registry
+  port: 4002
+  env:
+    TEMPORAL_ADDRESS: temporal-frontend:7233
+    TEMPORAL_NAMESPACE: default
+  secretEnv:
+    TENANT_REGISTRY_DATABASE_URL: { secret: lightshop-tenant-registry-db, key: url }
+  autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 4 }
+  networkPolicy:
+    enabled: true
+    allowFromPods:
+      - app.kubernetes.io/name: gateway
+      - app.kubernetes.io/name: catalog
+      - app.kubernetes.io/name: web-storefront
+    allowFromNamespaces: []   # add the admin console / ops namespace
+
+tenantRegistryWorker:
+  name: tenant-registry-worker
+  image: { name: tenant-registry }
+  command: [node, dist/worker.js]
+  port: 0
+  env:
+    TEMPORAL_ADDRESS: temporal-frontend:7233
+    TEMPORAL_NAMESPACE: default
+  secretEnv:
+    TENANT_REGISTRY_DATABASE_URL: { secret: lightshop-tenant-registry-db, key: url }
+  autoscaling: { enabled: true, minReplicas: 1, maxReplicas: 6 }
+  podDisruptionBudget: { enabled: true, minAvailable: 1 }
+
+webStorefront:
+  name: web-storefront
+  port: 5678
+  healthPath: /api/health
+  env:
+    API_URL: http://gateway/graphql
+  secretEnv:
+    OIDC_CLIENT_SECRET: { secret: lightshop-storefront-oidc, key: client-secret }
+    SESSION_SECRET: { secret: lightshop-storefront-oidc, key: session-secret }
+  # Next.js writes its cache under .next/cache; everything else stays read-only.
+  writablePaths: [/tmp, /app/apps/web-storefront/.next/cache]
+  ingress:
+    enabled: true
+    hosts: []             # every live tenant domain served by this cell
+  networkPolicy:
+    enabled: true
+    allowFromNamespaces: []   # add your ingress controller namespace

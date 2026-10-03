@@ -1,0 +1,7 @@
+LightShop deployed to cell "{{ .Values.global.region }}" ({{ .Values.global.environment }}), image tag "{{ .Values.global.imageTag | default .Chart.AppVersion }}".
+
+Required secrets in namespace {{ .Release.Namespace }} (see docs/runbooks/deployment.md):
+  lightshop-shared               gateway-shared-secret
+  lightshop-catalog-db           url
+  lightshop-tenant-registry-db   url
+  lightshop-storefront-oidc      client-secret, session-secret

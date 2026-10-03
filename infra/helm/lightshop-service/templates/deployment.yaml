@@ -1,46 +1,108 @@
+{{- if .Values.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.name }}
-  labels: { app: {{ .Values.name }}, lightshop/region: {{ .Values.region }} }
+  labels: {{- include "ls.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicas }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 25% }
   selector:
-    matchLabels: { app: {{ .Values.name }} }
+    matchLabels: {{- include "ls.selector" . | nindent 6 }}
   template:
     metadata:
-      labels: { app: {{ .Values.name }}, lightshop/region: {{ .Values.region }} }
+      labels:
+        {{- include "ls.labels" . | nindent 8 }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}{{ toYaml . | nindent 8 }}{{ end }}
+      {{- with .Values.podAnnotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
-      securityContext: { runAsNonRoot: true }
+      serviceAccountName: {{ .Values.name }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: topology.kubernetes.io/zone
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
-            matchLabels: { app: {{ .Values.name }} }
+            matchLabels: {{- include "ls.selector" . | nindent 14 }}
       containers:
         - name: {{ .Values.name }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ include "ls.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports: [{ containerPort: {{ .Values.port }} }]
-          env:
-            - { name: REGION, value: {{ .Values.region | quote }} }
-            {{- range $k, $v := .Values.env }}
-            - { name: {{ $k }}, value: {{ $v | quote }} }
-            {{- end }}
-          {{- with .Values.secretEnvFrom }}
+          {{- with .Values.command }}
+          command: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.args }}
+          args: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.port }}
+          ports:
+            - { name: http, containerPort: {{ .Values.port }} }
+          {{- end }}
+          env: {{- include "ls.envList" . | nindent 12 }}
+          {{- if or .Values.envFromSecrets .Values.envFromConfigMaps }}
           envFrom:
-            {{- range . }}
+            {{- range .Values.envFromSecrets }}
             - secretRef: { name: {{ . }} }
             {{- end }}
+            {{- range .Values.envFromConfigMaps }}
+            - configMapRef: { name: {{ . }} }
+            {{- end }}
           {{- end }}
+          {{- if .Values.port }}
+          startupProbe:
+            httpGet: { path: {{ .Values.healthPath }}, port: http }
+            periodSeconds: 3
+            failureThreshold: 40
           readinessProbe:
-            httpGet: { path: {{ .Values.healthPath }}, port: {{ .Values.port }} }
+            httpGet: { path: {{ .Values.healthPath }}, port: http }
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: {{ .Values.healthPath }}, port: {{ .Values.port }} }
-            initialDelaySeconds: 15
+            httpGet: { path: {{ .Values.healthPath }}, port: http }
+            periodSeconds: 15
+            failureThreshold: 4
+          {{- end }}
+          lifecycle:
+            # Let load balancers drain before SIGTERM.
+            preStop: { sleep: { seconds: 5 } }
           resources: {{- toYaml .Values.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            {{- range $i, $p := .Values.writablePaths }}
+            - { name: scratch-{{ $i }}, mountPath: {{ $p }} }
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}{{ toYaml . | nindent 12 }}{{ end }}
+      volumes:
+        {{- range $i, $p := .Values.writablePaths }}
+        - { name: scratch-{{ $i }}, emptyDir: {} }
+        {{- end }}
+        {{- with .Values.extraVolumes }}{{ toYaml . | nindent 8 }}{{ end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

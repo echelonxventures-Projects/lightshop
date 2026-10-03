@@ -1,0 +1,12 @@
+apiVersion: v2
+name: lightshop
+description: All LightShop workloads for one regional cell. Cloud- and region-agnostic; configure via values files.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - { name: lightshop-service, alias: gateway, version: 0.2.0, repository: "file://../lightshop-service" }
+  - { name: lightshop-service, alias: catalog, version: 0.2.0, repository: "file://../lightshop-service" }
+  - { name: lightshop-service, alias: tenantRegistry, version: 0.2.0, repository: "file://../lightshop-service" }
+  - { name: lightshop-service, alias: tenantRegistryWorker, version: 0.2.0, repository: "file://../lightshop-service" }
+  - { name: lightshop-service, alias: webStorefront, version: 0.2.0, repository: "file://../lightshop-service" }

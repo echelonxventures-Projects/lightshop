@@ -1,9 +1,27 @@
-# Terraform
+# Terraform: regional cells on any cloud
 
-Cloud-neutral by design ([ADR-0006](../../docs/adr/0006-zero-vendor-lock-in.md)):
+```
+contract/            The cell interface: variables.tf + outputs.md (cloud-neutral)
+providers/aws        VPC + EKS (IRSA) + RDS Postgres (Multi-AZ, Secrets Manager password) + S3
+providers/gcp        VPC-native private GKE (Workload Identity) + private Cloud SQL (regional HA, PITR) + GCS
+providers/azure      VNet + AKS (OIDC/workload identity, zones) + Postgres Flexible (private, Entra auth, ZRS HA) + Blob
+providers/on-prem    Any existing Kubernetes (k3s/RKE2/OpenShift/Talos/kubeadm); everything runs in-cluster
+envs/<cloud>         Root module per cloud. ONE STATE PER CELL, selected with a tfvars file
+scripts/check-contract.py   CI check that every provider and env matches the contract exactly
+```
 
-- `modules/regional-cell`: the **interface** of a cell (inputs/outputs every provider must satisfy).
-- `providers/<cloud>`: implementations of that interface: `aws`, `gcp`, `azure`, `on-prem` (bare-metal/k3s). Each creates a Kubernetes cluster, Postgres, object storage endpoint and network, then outputs the same values.
-- `envs/<env>-<region>`: compose a provider implementation with environment settings.
+- **Regions are configuration.** A cell is a tfvars file (`cell`, `cloud_region`, sizes). Add a region by adding a file; nothing in code names a region.
+- **Sizes are provider-neutral** (`small | medium | large | xlarge`), and each provider maps them to its instance types.
+- **Managed or in-cluster:** `managed_postgres.enabled = false` runs CloudNativePG instead. The `argocd_cluster_labels` output tells ArgoCD which dependencies to install in that cell.
+- **Mixed clouds:** cells can live on different clouds at once (e.g. US on AWS, India on-prem). The app layer is identical.
 
-Everything above Kubernetes (Kafka via Strimzi, Temporal, OpenSearch, Keycloak, Valkey, observability) is installed by Helm/ArgoCD identically on every cloud. Managed equivalents can be swapped in per region with no app changes.
+```bash
+cd infra/terraform/envs/aws
+cp cells/example.tfvars cells/staging-us.tfvars          # edit
+terraform init -backend-config=...                       # remote state, one key per cell
+terraform plan  -var-file=cells/staging-us.tfvars
+terraform apply -var-file=cells/staging-us.tfvars
+terraform output -json cell                              # kubeconfig command, endpoints, ArgoCD labels
+```
+
+Validated in CI on every PR (`fmt`, contract check, `init -backend=false` + `validate` for all four clouds).

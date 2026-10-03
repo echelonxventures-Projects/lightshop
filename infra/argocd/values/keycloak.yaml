@@ -1,0 +1,16 @@
+# Keycloak (Quarkus) on the cell's Postgres. Import a production realm built from infra/keycloak/ (without CI clients/dev users).
+command: ["/opt/keycloak/bin/kc.sh", "start", "--http-enabled=true", "--proxy-headers=xforwarded"]
+replicas: 2
+database:
+  vendor: postgres
+  hostname: lightshop-pg-rw
+  port: 5432
+  database: keycloak
+  username: keycloak
+  existingSecret: keycloak-db
+  existingSecretKey: password
+extraEnv: |
+  - name: KC_HOSTNAME
+    value: https://id.example.com
+  - name: KC_HEALTH_ENABLED
+    value: "true"
