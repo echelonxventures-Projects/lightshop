@@ -1,24 +1,72 @@
-name: catalog
+# Generic workload chart used for every LightShop service/app (see ../lightshop for the umbrella).
+enabled: true
+name: service
 image:
-  repository: ghcr.io/your-org/lightshop-catalog
-  tag: latest
+  # Full repository override; default is <global.imageRegistry>/<image.name>
+  repository: ""
+  name: ""
+  tag: ""
   pullPolicy: IfNotPresent
+# Override the container command (e.g. run the Temporal worker from the tenant-registry image).
+command: []
+args: []
+# 0 = no HTTP port (workers): no Service, no HTTP probes.
+port: 8080
+healthPath: /health
 replicas: 2
-port: 4001
-region: us
+# Plain environment variables.
 env: {}
-# Secrets are referenced, never inlined (External Secrets Operator / Vault / cloud KMS).
-secretEnvFrom: []
+# Environment from Secrets: ENV_NAME: { secret: <name>, key: <key> }
+secretEnv: {}
+# Whole Secrets/ConfigMaps as env (e.g. produced by External Secrets Operator).
+envFromSecrets: []
+envFromConfigMaps: []
 resources:
-  requests: { cpu: 250m, memory: 256Mi }
+  requests: { cpu: 100m, memory: 192Mi }
   limits: { memory: 512Mi }
 autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 20
   targetCPUUtilizationPercentage: 65
-healthPath: /health
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+serviceAccount:
+  create: true
+  # e.g. eks.amazonaws.com/role-arn, iam.gke.io/gcp-service-account, azure.workload.identity/client-id
+  annotations: {}
+podAnnotations: {}
+podLabels: {}
 ingress:
   enabled: false
-  className: nginx
+  # Any controller: traefik, envoy-gateway, haproxy, nginx, cloud load balancers...
+  className: ""
+  annotations: {}
   hosts: []
+  tls:
+    enabled: true
+    # cert-manager ClusterIssuer; empty = bring your own secret
+    clusterIssuer: letsencrypt
+    secretName: ""
+networkPolicy:
+  enabled: false
+  # Pod label selectors allowed to reach this workload (same namespace). Empty + ingress.enabled → ingress controller namespace.
+  allowFromPods: []
+  allowFromNamespaces: []
+# Writable scratch dirs on a read-only root filesystem.
+writablePaths: [/tmp]
+extraVolumes: []
+extraVolumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+terminationGracePeriodSeconds: 30
+global:
+  imageRegistry: ghcr.io/your-org/lightshop
+  imageTag: ""
+  region: local
+  environment: development
+  env: {}
+  secretEnv: {}
+  imagePullSecrets: []

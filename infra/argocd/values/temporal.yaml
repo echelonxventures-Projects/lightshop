@@ -1,0 +1,33 @@
+# Temporal on the cell's Postgres (CloudNativePG or managed). Bundled datastores are disabled.
+server:
+  replicaCount: 2
+  config:
+    persistence:
+      default:
+        driver: sql
+        sql:
+          driver: postgres12
+          host: lightshop-pg-rw
+          port: 5432
+          database: temporal
+          user: temporal
+          existingSecret: temporal-db
+      visibility:
+        driver: sql
+        sql:
+          driver: postgres12
+          host: lightshop-pg-rw
+          port: 5432
+          database: temporal_visibility
+          user: temporal
+          existingSecret: temporal-db
+cassandra: { enabled: false }
+mysql: { enabled: false }
+postgresql: { enabled: false }
+elasticsearch: { enabled: false }
+prometheus: { enabled: false }
+grafana: { enabled: false }
+schema:
+  createDatabase: { enabled: false }
+  setup: { enabled: true }
+  update: { enabled: true }

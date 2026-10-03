@@ -1,0 +1,14 @@
+global:
+  environment: production
+gateway:
+  autoscaling: { minReplicas: 3, maxReplicas: 40 }
+  resources: { requests: { cpu: 500m, memory: 512Mi }, limits: { memory: 1Gi } }
+  podDisruptionBudget: { minAvailable: 2 }
+catalog:
+  autoscaling: { minReplicas: 3, maxReplicas: 30 }
+  resources: { requests: { cpu: 500m, memory: 512Mi }, limits: { memory: 1Gi } }
+  podDisruptionBudget: { minAvailable: 2 }
+webStorefront:
+  autoscaling: { minReplicas: 3, maxReplicas: 60 }
+  resources: { requests: { cpu: 500m, memory: 768Mi }, limits: { memory: 1536Mi } }
+  podDisruptionBudget: { minAvailable: 2 }

@@ -1,0 +1,55 @@
+name: Deploy
+
+# Push-style deploy to ANY Kubernetes cluster (EKS, GKE, AKS, on-prem). GitOps alternative: ArgoCD
+# (infra/argocd/lightshop-cells.yaml) with the cluster annotation lightshop/image-tag.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment (GitHub environment with protection rules + secrets)
+        type: choice
+        options: [staging, production]
+      cell:
+        description: Cell code (values/cells/<cell>.yaml must exist)
+        required: true
+      image_tag:
+        description: Image tag (12-char git SHA built by CI). Defaults to this commit.
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}-${{ inputs.cell }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Cluster credentials
+        # Environment secret KUBECONFIG_<CELL> (upper-case cell), e.g. KUBECONFIG_US. Any cluster/cloud.
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets[format('KUBECONFIG_{0}', inputs.cell)] }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl version
+      - name: Helm upgrade (atomic, rolls back on failure)
+        run: |
+          TAG="${{ inputs.image_tag }}"; [ -z "$TAG" ] && TAG="${GITHUB_SHA::12}"
+          REG="${{ vars.IMAGE_REGISTRY }}"; [ -z "$REG" ] && REG="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/lightshop"
+          helm dependency update infra/helm/lightshop
+          helm upgrade --install lightshop infra/helm/lightshop \
+            --namespace lightshop --create-namespace \
+            -f infra/helm/lightshop/values/env/${{ inputs.environment }}.yaml \
+            -f infra/helm/lightshop/values/cells/${{ inputs.cell }}.yaml \
+            --set global.imageRegistry="$REG" --set global.imageTag="$TAG" \
+            --atomic --wait --timeout 10m
+      - name: Post-deploy smoke check
+        run: |
+          kubectl -n lightshop rollout status deploy/gateway deploy/catalog deploy/tenant-registry deploy/web-storefront --timeout=5m
+          kubectl -n lightshop run smoke-${{ github.run_id }} --rm -i --restart=Never --image=curlimages/curl -- \
+            sh -c 'curl -sf http://gateway/health && curl -sf http://catalog/health && curl -sf http://tenant-registry/health && curl -sf http://web-storefront/api/health'

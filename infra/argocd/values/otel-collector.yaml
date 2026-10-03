@@ -1,0 +1,23 @@
+# Same pipeline as infra/observability/otel-collector.yaml; change only `exporters` to pick a backend
+# (Grafana Cloud, Datadog, Honeycomb, Elastic, New Relic, a cloud-native collector, self-hosted Tempo/Mimir).
+mode: deployment
+replicaCount: 2
+image: { repository: otel/opentelemetry-collector-contrib }
+fullnameOverride: otel-collector
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc: { endpoint: 0.0.0.0:4317 }
+        http: { endpoint: 0.0.0.0:4318 }
+  processors:
+    batch: {}
+    memory_limiter: { check_interval: 1s, limit_percentage: 80, spike_limit_percentage: 25 }
+  exporters:
+    otlphttp:
+      endpoint: https://otlp.example.com   # your backend
+  service:
+    pipelines:
+      traces: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlphttp] }
+      metrics: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlphttp] }
+      logs: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlphttp] }

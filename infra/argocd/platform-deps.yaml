@@ -1,0 +1,273 @@
+# TLS for tenant custom domains (ACME)
+# Enable on a cell cluster with label: lightshop/dep-cert-manager: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-cert-manager
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-cert-manager: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-cert-manager-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://charts.jetstack.io
+          chart: cert-manager
+          targetRevision: "v1.21.2"
+          helm:
+            releaseName: cert-manager
+            valueFiles: [$repo/infra/argocd/values/cert-manager.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: cert-manager
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# Secrets from Vault / AWS SM / GCP SM / Azure KV / any backend
+# Enable on a cell cluster with label: lightshop/dep-external-secrets: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-external-secrets
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-external-secrets: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-external-secrets-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://charts.external-secrets.io
+          chart: external-secrets
+          targetRevision: "2.11.0"
+          helm:
+            releaseName: external-secrets
+            valueFiles: [$repo/infra/argocd/values/external-secrets.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: external-secrets
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# In-cluster Postgres operator (opt out to use a managed Postgres)
+# Enable on a cell cluster with label: lightshop/dep-cloudnative-pg: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-cloudnative-pg
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-cloudnative-pg: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-cloudnative-pg-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://cloudnative-pg.github.io/charts
+          chart: cloudnative-pg
+          targetRevision: "0.29.1"
+          helm:
+            releaseName: cloudnative-pg
+            valueFiles: [$repo/infra/argocd/values/cloudnative-pg.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: cnpg-system
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# In-cluster Kafka operator (opt out to use any managed Kafka-protocol service)
+# Enable on a cell cluster with label: lightshop/dep-strimzi: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-strimzi
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-strimzi: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-strimzi-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://strimzi.io/charts/
+          chart: strimzi-kafka-operator
+          targetRevision: "1.2.0"
+          helm:
+            releaseName: strimzi
+            valueFiles: [$repo/infra/argocd/values/strimzi.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: kafka
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# Durable workflows (opt out to use Temporal Cloud)
+# Enable on a cell cluster with label: lightshop/dep-temporal: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-temporal
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-temporal: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-temporal-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://go.temporal.io/helm-charts
+          chart: temporal
+          targetRevision: "1.7.0"
+          helm:
+            releaseName: temporal
+            valueFiles: [$repo/infra/argocd/values/temporal.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: lightshop
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# OIDC identity provider (opt out to use any OIDC provider)
+# Enable on a cell cluster with label: lightshop/dep-keycloak: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-keycloak
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-keycloak: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-keycloak-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://codecentric.github.io/helm-charts
+          chart: keycloakx
+          targetRevision: "7.3.2"
+          helm:
+            releaseName: keycloak
+            valueFiles: [$repo/infra/argocd/values/keycloak.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: identity
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# Telemetry entry point; exporters choose the backend
+# Enable on a cell cluster with label: lightshop/dep-otel-collector: "in-cluster"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: dep-otel-collector
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/dep-otel-collector: "in-cluster" }
+  template:
+    metadata:
+      name: 'dep-otel-collector-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      sources:
+        - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+          chart: opentelemetry-collector
+          targetRevision: "0.175.0"
+          helm:
+            releaseName: otel-collector
+            valueFiles: [$repo/infra/argocd/values/otel-collector.yaml]
+        - repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+          targetRevision: main
+          ref: repo
+      destination:
+        server: '{{ .server }}'
+        namespace: lightshop
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# Cell-level platform resources (Postgres cluster + databases, Kafka cluster, ClusterIssuer, secret wiring).
+# Enable with label: lightshop/platform-manifests: "true"
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-manifests
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/platform-manifests: "true" }
+  template:
+    metadata:
+      name: 'platform-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+        targetRevision: main
+        path: infra/k8s/platform
+      destination:
+        server: '{{ .server }}'
+        namespace: lightshop
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true, SkipDryRunOnMissingResource=true]

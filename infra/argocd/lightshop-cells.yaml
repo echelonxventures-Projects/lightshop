@@ -1,0 +1,40 @@
+# Deploys the LightShop umbrella chart to every registered cell cluster.
+# Register a cluster in ArgoCD with labels:
+#   lightshop/cell: "true"   lightshop/region: <cell code>   lightshop/environment: staging|production
+# and annotation lightshop/image-tag: <git sha> (updated by the deploy workflow or ArgoCD Image Updater).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: lightshop-cells
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels: { lightshop/cell: "true" }
+  template:
+    metadata:
+      name: 'lightshop-{{ index .metadata.labels "lightshop/environment" }}-{{ index .metadata.labels "lightshop/region" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/echelonxventures-Projects/lightshop.git
+        targetRevision: main
+        path: infra/helm/lightshop
+        helm:
+          valueFiles:
+            - values.yaml
+            - 'values/env/{{ index .metadata.labels "lightshop/environment" }}.yaml'
+            - 'values/cells/{{ index .metadata.labels "lightshop/region" }}.yaml'
+          parameters:
+            - name: global.imageTag
+              value: '{{ index .metadata.annotations "lightshop/image-tag" }}'
+      destination:
+        server: '{{ .server }}'
+        namespace: lightshop
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+        retry: { limit: 5, backoff: { duration: 10s, factor: 2, maxDuration: 3m } }

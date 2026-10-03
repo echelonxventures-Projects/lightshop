@@ -1,0 +1,52 @@
+# Kafka per cell via Strimzi (KRaft). Skip if the cell uses a managed Kafka-protocol service and set KAFKA_BROKERS.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: dual-role
+  labels: { strimzi.io/cluster: lightshop-kafka }
+spec:
+  replicas: 3
+  roles: [controller, broker]
+  storage:
+    type: jbod
+    volumes: [{ id: 0, type: persistent-claim, size: 100Gi, deleteClaim: false }]
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: lightshop-kafka
+spec:
+  kafka:
+    listeners:
+      - { name: plain, port: 9092, type: internal, tls: false }
+      - { name: tls, port: 9093, type: internal, tls: true }
+    config:
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      auto.create.topics.enable: false
+  entityOperator:
+    topicOperator: {}
+---
+# Topics are declared, not auto-created: each is owned by exactly one service (docs/architecture/context-map.md).
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: catalog.product.v1
+  labels: { strimzi.io/cluster: lightshop-kafka }
+spec:
+  partitions: 24
+  replicas: 3
+  config: { retention.ms: "1209600000", cleanup.policy: delete }
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: tenancy.tenant.v1
+  labels: { strimzi.io/cluster: lightshop-kafka }
+spec:
+  partitions: 6
+  replicas: 3
+  config: { cleanup.policy: compact }
