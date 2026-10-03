@@ -1,0 +1,95 @@
+/*
+ * LightShop UI. Components consume only --ls-* tokens. Tenants set them via themeToCss()
+ * (libs/tenancy); these defaults are a neutral, brandless fallback.
+ */
+:root {
+  --ls-color-primary: #1f1f24;
+  --ls-color-on-primary: #ffffff;
+  --ls-color-accent: #1f1f24;
+  --ls-color-bg: #ffffff;
+  --ls-color-surface: #f7f7f8;
+  --ls-color-text: #111114;
+  --ls-color-text-muted: #5b5b66;
+  --ls-color-border: color-mix(in srgb, var(--ls-color-text) 12%, transparent);
+  --ls-radius: 8px;
+  --ls-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ls-space: 8px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ls-color-bg: #0e0e11;
+    --ls-color-surface: #1a1a1f;
+    --ls-color-text: #f2f2f5;
+    --ls-color-text-muted: #a0a0ab;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--ls-font);
+  background: var(--ls-color-bg);
+  color: var(--ls-color-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ls-color-primary); outline-offset: 2px; }
+
+.ls-container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+
+.ls-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 20px;
+  border-radius: var(--ls-radius); border: 1px solid transparent;
+  font: inherit; font-weight: 600; cursor: pointer; text-decoration: none;
+  transition: filter 120ms ease, background 120ms ease;
+}
+.ls-button--primary { background: var(--ls-color-primary); color: var(--ls-color-on-primary); }
+.ls-button--primary:hover { filter: brightness(1.08); }
+.ls-button--secondary { background: transparent; color: var(--ls-color-text); border-color: var(--ls-color-border); }
+.ls-button--secondary:hover { background: var(--ls-color-surface); }
+.ls-button--block { width: 100%; }
+.ls-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ls-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: color-mix(in srgb, var(--ls-color-accent) 16%, transparent); color: var(--ls-color-text);
+}
+
+.ls-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ls-price--lg { font-size: 28px; }
+.ls-price__unit { font-weight: 400; color: var(--ls-color-text-muted); font-size: 0.8em; margin-left: 4px; }
+
+.ls-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+.ls-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 16px;
+  background: var(--ls-color-surface); border: 1px solid var(--ls-color-border);
+  border-radius: var(--ls-radius); text-decoration: none;
+  transition: border-color 120ms ease;
+}
+.ls-card:hover { border-color: var(--ls-color-primary); }
+.ls-card__media {
+  aspect-ratio: 1; border-radius: calc(var(--ls-radius) * 0.75);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ls-color-primary) 18%, var(--ls-color-bg)), var(--ls-color-bg));
+  display: grid; place-items: center; font-size: 40px; font-weight: 700; color: var(--ls-color-primary);
+}
+.ls-card__title { font-weight: 600; margin: 0; font-size: 15px; }
+.ls-card__meta { color: var(--ls-color-text-muted); font-size: 13px; margin: 0; }
+
+.ls-header { border-bottom: 1px solid var(--ls-color-border); background: var(--ls-color-bg); }
+.ls-header__inner { display: flex; align-items: center; gap: 8px 24px; min-height: 64px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; }
+.ls-header__brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; text-decoration: none; }
+.ls-header__logo {
+  width: 32px; height: 32px; border-radius: var(--ls-radius); background: var(--ls-color-primary);
+  color: var(--ls-color-on-primary); display: grid; place-items: center; font-size: 16px;
+}
+.ls-header__nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
+.ls-header__nav a { text-decoration: none; color: var(--ls-color-text-muted); }
+.ls-header__nav a:hover { color: var(--ls-color-text); }
+
+.ls-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ls-table th, .ls-table td { text-align: left; padding: 8px 0; border-bottom: 1px solid var(--ls-color-border); vertical-align: top; }
+.ls-table th { color: var(--ls-color-text-muted); font-weight: 500; width: 40%; }

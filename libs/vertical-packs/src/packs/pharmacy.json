@@ -1,0 +1,30 @@
+{
+  "id": "pharmacy",
+  "name": { "en": "Pharmacy & Health" },
+  "version": 1,
+  "defaultTaxCode": "medicine",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "activeIngredients": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+      "strength": { "type": "string" },
+      "dosageForm": { "type": "string", "enum": ["tablet", "capsule", "syrup", "injection", "ointment", "drops", "inhaler", "device"] },
+      "packSize": { "type": "integer", "minimum": 1 },
+      "prescriptionRequired": { "type": "boolean" },
+      "scheduleClass": { "type": "string" }
+    },
+    "required": ["brand", "activeIngredients", "dosageForm", "prescriptionRequired"],
+    "additionalProperties": false
+  },
+  "facets": ["brand", "dosageForm", "prescriptionRequired"],
+  "variantAxes": ["packSize", "strength"],
+  "compliance": {
+    "requiresSellerLicense": true,
+    "licenseTypes": ["pharmacy"],
+    "restrictedRegions": [],
+    "prescriptionVerification": true
+  },
+  "fulfillment": { "shippable": true, "bulky": false, "coldChain": false, "batchAndExpiryTracked": true },
+  "returns": { "returnable": false, "windowDays": 0, "refundOnDamageOnly": true }
+}

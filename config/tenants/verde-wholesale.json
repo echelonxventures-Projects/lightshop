@@ -1,0 +1,27 @@
+{
+  "id": "verde-wholesale",
+  "brand": {
+    "name": "Verde Wholesale",
+    "tagline": "Source direct from verified suppliers.",
+    "supportEmail": "trade@verde.example",
+    "legal": { "companyName": "Verde Trading Pvt Ltd" }
+  },
+  "theme": {
+    "colorPrimary": "#0F7B5F",
+    "colorAccent": "#C9A227",
+    "radius": "sm",
+    "fontFamily": "\"Inter\", system-ui, sans-serif"
+  },
+  "domains": ["verde.localhost"],
+  "regions": ["in", "sea"],
+  "locales": ["en-IN", "hi-IN"],
+  "currencies": ["INR", "USD"],
+  "businessModels": ["b2b-wholesale", "d2c"],
+  "verticals": ["industrial", "fashion"],
+  "adapters": {
+    "payments": ["manual", "razorpay", "net-terms"],
+    "tax": "table",
+    "shipping": ["flat-rate"]
+  },
+  "features": { "rfq": true, "tieredPricing": true, "buyerApprovals": true }
+}

@@ -1,0 +1,91 @@
+# Local infrastructure. Every image is open source and self-hostable (zero vendor lock-in).
+#   pnpm infra:up        -> core: Postgres + Kafka (enough to run catalog + storefront)
+#   pnpm infra:up:full   -> + Redis, OpenSearch, Temporal, Keycloak, S3-compatible storage
+name: lightshop
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lightshop
+      POSTGRES_PASSWORD: lightshop
+      POSTGRES_DB: lightshop
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/local/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lightshop"]
+      interval: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.9.1
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  redis:
+    profiles: [full]
+    image: valkey/valkey:8-alpine
+    ports: ["6379:6379"]
+
+  opensearch:
+    profiles: [full]
+    image: opensearchproject/opensearch:2.19.2
+    environment:
+      discovery.type: single-node
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["9200:9200"]
+
+  temporal:
+    profiles: [full]
+    image: temporalio/auto-setup:1.27
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: lightshop
+      POSTGRES_PWD: lightshop
+      POSTGRES_SEEDS: postgres
+    ports: ["7233:7233"]
+
+  temporal-ui:
+    profiles: [full]
+    image: temporalio/ui:2.36.0
+    depends_on: [temporal]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports: ["8233:8080"]
+
+  keycloak:
+    profiles: [full]
+    image: quay.io/keycloak/keycloak:26.2
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports: ["8080:8080"]
+
+  object-storage:
+    profiles: [full]
+    image: chrislusf/seaweedfs:3.85
+    command: server -s3 -dir=/data
+    ports: ["8333:8333"]
+    volumes: [s3data:/data]
+
+volumes:
+  pgdata:
+  s3data:

@@ -1,0 +1,117 @@
+import 'reflect-metadata';
+import { InMemoryEventBus } from '@lightshop/adapters';
+import { CatalogEventTypes } from '@lightshop/contracts';
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CatalogModule } from '../src/catalog.module';
+import { loadConfig } from '../src/config';
+import { OutboxRelay } from '../src/infrastructure/outbox-relay';
+import { OUTBOX_RELAY } from '../src/tokens';
+
+let app: INestApplication;
+const bus = new InMemoryEventBus();
+
+type Gql = { data?: Record<string, any>; errors?: Array<{ message: string; extensions?: { code?: string; details?: string[] } }> };
+
+async function gql(query: string, variables: Record<string, unknown> = {}, headers: Record<string, string> = { 'x-tenant-id': 'acme-mart' }): Promise<Gql> {
+  const res = await request(app.getHttpServer()).post('/graphql').set(headers).send({ query, variables });
+  return res.body as Gql;
+}
+
+beforeAll(async () => {
+  const config = { ...loadConfig({}), databaseUrl: undefined, outboxIntervalMs: 60_000 };
+  const moduleRef = await Test.createTestingModule({ imports: [CatalogModule.forRoot(config, { eventBus: bus })] }).compile();
+  app = moduleRef.createNestApplication();
+  await app.init();
+});
+
+afterAll(async () => {
+  await app?.close();
+});
+
+describe('catalog subgraph', () => {
+  it('lists seeded products for a tenant, localized', async () => {
+    const r = await gql(`{ products { edges { node { id title vertical } } } }`, {}, { 'x-tenant-id': 'acme-mart', 'accept-language': 'es-MX,es;q=0.9' });
+    expect(r.errors).toBeUndefined();
+    const titles = r.data!.products.edges.map((e: any) => e.node.title);
+    expect(titles).toContain('Smartphone Nova X2 128 GB');
+    expect(titles).toHaveLength(3);
+  });
+
+  it('picks the buy box across sellers and formats money per locale', async () => {
+    const r = await gql(`{ product(id: "prd_demo_phone") { buyBox { sellerId price { amount currency formatted } } offers { sellerId } } }`);
+    expect(r.data!.product.offers).toHaveLength(3);
+    expect(r.data!.product.buyBox).toEqual({ sellerId: 'sel_gadgetco', price: { amount: '479.00', currency: 'USD', formatted: '$479.00' } });
+  });
+
+  it('resolves white-label tenants by Host and isolates their data', async () => {
+    const r = await gql(`{ products { edges { node { id buyBox { moq price { formatted } } } } } product(id: "prd_demo_phone") { id } }`, {}, { host: 'verde.localhost:4001' });
+    const ids = r.data!.products.edges.map((e: any) => e.node.id);
+    expect(ids.sort()).toEqual(['prd_demo_bolts', 'prd_demo_polo']);
+    expect(r.data!.product).toBeNull();
+    const bolts = r.data!.products.edges.find((e: any) => e.node.id === 'prd_demo_bolts').node;
+    expect(bolts.buyBox).toEqual({ moq: 25, price: { formatted: '₹2,390.00' } });
+  });
+
+  it('rejects unknown tenants', async () => {
+    const r = await gql(`{ products { edges { cursor } } }`, {}, { host: 'nobody.example' });
+    expect(r.errors?.[0]?.extensions?.code).toBe('TENANT_NOT_FOUND');
+  });
+
+  it('only exposes vertical packs the tenant enabled', async () => {
+    const r = await gql(`{ verticalPacks { id name facets } }`, {}, { 'x-tenant-id': 'verde-wholesale' });
+    expect(r.data!.verticalPacks.map((p: any) => p.id).sort()).toEqual(['fashion', 'industrial']);
+  });
+
+  const CREATE = `mutation($input: CreateProductInput!) { createProduct(input: $input) { id title attributes } }`;
+
+  it('validates attributes against the vertical pack', async () => {
+    const r = await gql(CREATE, { input: { vertical: 'electronics', titles: { en: 'Bad' }, categoryPath: [], attributes: { brand: 'X' } } });
+    expect(r.errors?.[0]?.extensions?.code).toBe('VALIDATION_FAILED');
+    expect(r.errors?.[0]?.extensions?.details).toEqual(expect.arrayContaining([expect.stringMatching(/model/), expect.stringMatching(/warrantyMonths/)]));
+  });
+
+  it('blocks verticals the tenant has not enabled', async () => {
+    const r = await gql(CREATE, { input: { vertical: 'pharmacy', titles: { en: 'Aspirin' }, categoryPath: [], attributes: {} } });
+    expect(r.errors?.[0]?.extensions?.code).toBe('FORBIDDEN_VERTICAL');
+  });
+
+  it('creates a product, adds an offer and publishes events through the outbox', async () => {
+    const created = await gql(CREATE, {
+      input: { vertical: 'electronics', titles: { en: 'Volt Earbuds' }, categoryPath: ['Audio'], attributes: { brand: 'Volt', model: 'E1', warrantyMonths: 6 } },
+    });
+    expect(created.errors).toBeUndefined();
+    const id = created.data!.createProduct.id as string;
+    expect(id).toMatch(/^prd_/);
+    expect(created.data!.createProduct.attributes.serialTracked).toBe(false);
+
+    const badCurrency = await gql(`mutation { addOffer(productId: "${id}", input: { sellerId: "s1", sku: "E1", price: "10", currency: "INR", stock: 1 }) { id } }`);
+    expect(badCurrency.errors?.[0]?.extensions?.code).toBe('UNSUPPORTED_CURRENCY');
+
+    const offered = await gql(`mutation { addOffer(productId: "${id}", input: { sellerId: "s1", sku: "E1", price: "59.99", currency: "USD", stock: 7 }) { buyBox { sku stock } } }`);
+    expect(offered.data!.addOffer.buyBox).toEqual({ sku: 'E1', stock: 7 });
+
+    await app.get<OutboxRelay>(OUTBOX_RELAY).flush();
+    const types = bus.published.filter((p) => p.event.aggregateId === id).map((p) => p.event.type);
+    expect(types).toEqual([CatalogEventTypes.ProductCreated, CatalogEventTypes.OfferAdded]);
+    expect(bus.published.every((p) => p.topic === 'catalog.product.v1')).toBe(true);
+  });
+
+  it('paginates with cursors', async () => {
+    const first = await gql(`{ products(first: 2) { edges { cursor node { id } } pageInfo { hasNextPage endCursor } } }`);
+    expect(first.data!.products.pageInfo.hasNextPage).toBe(true);
+    const next = await gql(`query($after: String) { products(first: 10, after: $after) { edges { node { id } } pageInfo { hasNextPage } } }`, {
+      after: first.data!.products.pageInfo.endCursor,
+    });
+    const seen = [...first.data!.products.edges, ...next.data!.products.edges].map((e: any) => e.node.id);
+    expect(new Set(seen).size).toBe(seen.length);
+    expect(next.data!.products.pageInfo.hasNextPage).toBe(false);
+  });
+
+  it('exposes health with outbox depth', async () => {
+    const res = await request(app.getHttpServer()).get('/health');
+    expect(res.body).toMatchObject({ status: 'ok', service: 'catalog' });
+  });
+});

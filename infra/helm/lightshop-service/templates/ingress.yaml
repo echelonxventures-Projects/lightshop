@@ -1,0 +1,23 @@
+{{- if .Values.ingress.enabled }}
+# Tenant custom domains are added to `hosts` by the tenant-registry; TLS via cert-manager (ACME).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.name }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts: {{- toYaml .Values.ingress.hosts | nindent 8 }}
+      secretName: {{ .Values.name }}-tls
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: {{ $.Values.name }}, port: { number: 80 } } }
+    {{- end }}
+{{- end }}

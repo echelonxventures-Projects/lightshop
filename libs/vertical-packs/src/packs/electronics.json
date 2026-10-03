@@ -1,0 +1,28 @@
+{
+  "id": "electronics",
+  "name": { "en": "Electronics & Appliances", "hi": "इलेक्ट्रॉनिक्स" },
+  "version": 1,
+  "defaultTaxCode": "electronics",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "model": { "type": "string", "minLength": 1 },
+      "warrantyMonths": { "type": "integer", "minimum": 0, "maximum": 120 },
+      "serialTracked": { "type": "boolean", "default": false },
+      "storageGb": { "type": "integer", "minimum": 0 },
+      "ramGb": { "type": "integer", "minimum": 0 },
+      "screenInches": { "type": "number", "minimum": 0 },
+      "powerWatts": { "type": "number", "minimum": 0 },
+      "energyRating": { "type": "string", "enum": ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"] },
+      "installationAvailable": { "type": "boolean" }
+    },
+    "required": ["brand", "model", "warrantyMonths"],
+    "additionalProperties": false
+  },
+  "facets": ["brand", "storageGb", "ramGb", "screenInches", "energyRating"],
+  "variantAxes": ["storageGb", "color"],
+  "compliance": { "requiresSellerLicense": false, "restrictedRegions": [], "requiredDocuments": ["ewaste-epr"] },
+  "fulfillment": { "shippable": true, "bulky": false, "coldChain": false, "serialCaptureAtPack": true },
+  "returns": { "returnable": true, "windowDays": 10, "requiresInspection": true }
+}

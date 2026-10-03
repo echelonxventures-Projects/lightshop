@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: nrwl/nx-set-shas@v4
+      - name: Lint, typecheck, test, build (affected only)
+        run: pnpm nx affected -t lint typecheck test build --parallel=3
+
+  e2e:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run-many -t build -p @lightshop/catalog-service @lightshop/web-storefront
+      - run: pnpm --filter @lightshop/web-storefront exec playwright install --with-deps chromium
+      - run: pnpm --filter @lightshop/web-storefront e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: apps/web-storefront/playwright-report }
+
+  catalog-postgres:
+    needs: verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: lightshop, POSTGRES_PASSWORD: lightshop, POSTGRES_DB: catalog }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U lightshop" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nx run @lightshop/catalog-service:build
+      - name: Boot catalog on Postgres and verify seed + outbox drain
+        env:
+          CATALOG_DATABASE_URL: postgres://lightshop:lightshop@localhost:5432/catalog
+        run: |
+          node services/catalog/dist/main.js & sleep 6
+          curl -sf localhost:4001/health | tee /dev/stderr | grep -q '"outboxPending":0'
+          curl -sf localhost:4001/graphql -H 'content-type: application/json' -H 'x-tenant-id: acme-mart' \
+            -d '{"query":"{ products { edges { node { id } } } }"}' | grep -q prd_demo_phone

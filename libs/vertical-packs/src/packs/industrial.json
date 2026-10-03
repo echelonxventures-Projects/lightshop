@@ -1,0 +1,28 @@
+{
+  "id": "industrial",
+  "name": { "en": "Industrial & B2B Supplies" },
+  "version": 1,
+  "defaultTaxCode": "general",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "manufacturerPartNumber": { "type": "string", "minLength": 1 },
+      "moq": { "type": "integer", "minimum": 1 },
+      "unitOfMeasure": { "type": "string", "enum": ["piece", "box", "carton", "pallet", "kg", "tonne", "meter", "roll"] },
+      "leadTimeDays": { "type": "integer", "minimum": 0 },
+      "customizable": { "type": "boolean", "default": false },
+      "certifications": { "type": "array", "items": { "type": "string" } },
+      "hsCode": { "type": "string", "pattern": "^[0-9]{6,10}$" },
+      "originCountry": { "type": "string", "pattern": "^[A-Z]{2}$" },
+      "specSheetUrl": { "type": "string", "format": "uri" }
+    },
+    "required": ["brand", "manufacturerPartNumber", "moq", "unitOfMeasure"],
+    "additionalProperties": false
+  },
+  "facets": ["brand", "certifications", "originCountry", "customizable"],
+  "variantAxes": [],
+  "compliance": { "requiresSellerLicense": true, "licenseTypes": ["business-registration"], "restrictedRegions": [] },
+  "fulfillment": { "shippable": true, "bulky": true, "coldChain": false, "freightQuote": true },
+  "returns": { "returnable": true, "windowDays": 7, "requiresInspection": true }
+}

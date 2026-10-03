@@ -1,0 +1,26 @@
+{
+  "id": "fashion",
+  "name": { "en": "Fashion & Footwear" },
+  "version": 1,
+  "defaultTaxCode": "apparel",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "gender": { "type": "string", "enum": ["women", "men", "unisex", "girls", "boys", "baby"] },
+      "size": { "type": "string" },
+      "sizeSystem": { "type": "string", "enum": ["INT", "US", "UK", "EU", "IN", "JP", "CN"] },
+      "color": { "type": "string" },
+      "fabric": { "type": "string" },
+      "fit": { "type": "string", "enum": ["slim", "regular", "relaxed", "oversized"] },
+      "careInstructions": { "type": "string" }
+    },
+    "required": ["brand", "gender", "size", "sizeSystem", "color"],
+    "additionalProperties": false
+  },
+  "facets": ["brand", "gender", "size", "color", "fit"],
+  "variantAxes": ["size", "color"],
+  "compliance": { "requiresSellerLicense": false, "restrictedRegions": [] },
+  "fulfillment": { "shippable": true, "bulky": false, "coldChain": false },
+  "returns": { "returnable": true, "windowDays": 30, "allowExchange": true }
+}

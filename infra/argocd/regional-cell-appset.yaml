@@ -1,0 +1,38 @@
+# ArgoCD ApplicationSet: deploys every service to every regional cell (cluster label lightshop/cell=true).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: lightshop-cells
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels: { lightshop/cell: "true" }
+          - list:
+              elements:
+                - { service: catalog, port: "4001" }
+                - { service: web-storefront, port: "5678" }
+  template:
+    metadata:
+      name: "{{service}}-{{metadata.labels.lightshop/region}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/your-org/lightshop.git
+        targetRevision: main
+        path: infra/helm/lightshop-service
+        helm:
+          valueFiles: ["values.yaml"]
+          parameters:
+            - { name: name, value: "{{service}}" }
+            - { name: port, value: "{{port}}" }
+            - { name: region, value: "{{metadata.labels.lightshop/region}}" }
+      destination:
+        server: "{{server}}"
+        namespace: lightshop
+      syncPolicy:
+        automated: { prune: true, selfHeal: true }
+        syncOptions: [CreateNamespace=true]

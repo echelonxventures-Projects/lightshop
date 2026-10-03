@@ -1,0 +1,110 @@
+# Catalog subgraph (Apollo Federation v2). Composed by services/gateway with the other subgraphs.
+extend schema @link(url: "https://specs.apollo.dev/federation/v2.5", import: ["@key", "@shareable"])
+
+scalar JSON
+
+type Money @shareable {
+  "Decimal string in the currency's minor-unit precision, e.g. \"19.99\"."
+  amount: String!
+  "ISO 4217"
+  currency: String!
+  "Formatted for the request locale, e.g. \"$19.99\"."
+  formatted: String!
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum OfferCondition {
+  NEW
+  REFURBISHED
+  USED
+}
+
+"A seller's offer for a product (many sellers can sell the same product)."
+type Offer {
+  id: ID!
+  sellerId: ID!
+  sku: String!
+  price: Money!
+  stock: Int!
+  condition: OfferCondition!
+  "B2B: minimum order quantity."
+  moq: Int!
+}
+
+type Product @key(fields: "id") {
+  id: ID!
+  vertical: String!
+  "Title in the request locale (with fallbacks)."
+  title: String!
+  "All translations, keyed by locale."
+  titles: JSON!
+  description: String
+  categoryPath: [String!]!
+  "Attributes validated against the vertical pack schema."
+  attributes: JSON!
+  status: ProductStatus!
+  offers: [Offer!]!
+  "Winning offer: lowest price among in-stock offers."
+  buyBox: Offer
+  createdAt: String!
+}
+
+type ProductEdge {
+  cursor: String!
+  node: Product!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+type ProductConnection {
+  edges: [ProductEdge!]!
+  pageInfo: PageInfo!
+}
+
+type VerticalPack {
+  id: String!
+  name: String!
+  facets: [String!]!
+  variantAxes: [String!]!
+  "JSON Schema for product attributes; drives seller listing forms with no code."
+  attributeSchema: JSON!
+}
+
+input CreateProductInput {
+  vertical: String!
+  titles: JSON!
+  description: String
+  categoryPath: [String!]!
+  attributes: JSON!
+  status: ProductStatus = ACTIVE
+}
+
+input OfferInput {
+  sellerId: ID!
+  sku: String!
+  price: String!
+  currency: String!
+  stock: Int!
+  condition: OfferCondition = NEW
+  moq: Int = 1
+}
+
+type Query {
+  product(id: ID!): Product
+  products(vertical: String, first: Int = 20, after: String): ProductConnection!
+  "Vertical packs enabled for the current tenant."
+  verticalPacks: [VerticalPack!]!
+}
+
+type Mutation {
+  createProduct(input: CreateProductInput!): Product!
+  addOffer(productId: ID!, input: OfferInput!): Product!
+}

@@ -1,0 +1,24 @@
+name: catalog
+image:
+  repository: ghcr.io/your-org/lightshop-catalog
+  tag: latest
+  pullPolicy: IfNotPresent
+replicas: 2
+port: 4001
+region: us
+env: {}
+# Secrets are referenced, never inlined (External Secrets Operator / Vault / cloud KMS).
+secretEnvFrom: []
+resources:
+  requests: { cpu: 250m, memory: 256Mi }
+  limits: { memory: 512Mi }
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 65
+healthPath: /health
+ingress:
+  enabled: false
+  className: nginx
+  hosts: []

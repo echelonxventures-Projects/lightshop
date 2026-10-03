@@ -1,0 +1,22 @@
+{
+  "id": "acme-mart",
+  "brand": {
+    "name": "Acme Mart",
+    "tagline": "Everything, delivered.",
+    "supportEmail": "help@acme-mart.example",
+    "legal": { "companyName": "Acme Mart Inc." }
+  },
+  "theme": { "colorPrimary": "#1F4FD8", "colorAccent": "#F5A524", "radius": "md" },
+  "domains": ["acme.localhost", "localhost", "127.0.0.1"],
+  "regions": ["us", "eu"],
+  "locales": ["en-US", "es-US", "de-DE"],
+  "currencies": ["USD", "EUR"],
+  "businessModels": ["b2c-marketplace", "first-party-retail"],
+  "verticals": ["electronics", "fashion", "grocery"],
+  "adapters": {
+    "payments": ["manual", "stripe"],
+    "search": "opensearch",
+    "shipping": ["flat-rate", "easypost"]
+  },
+  "features": { "storePickup": true, "groceryDeliverySlots": true, "multiSellerBuyBox": true }
+}

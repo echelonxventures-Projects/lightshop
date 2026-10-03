@@ -1,0 +1,30 @@
+{
+  "name": "lightshop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "White-label, vendor-neutral unified commerce platform (B2C, B2B, 1P omnichannel, D2C).",
+  "packageManager": "pnpm@11.7.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "typecheck": "nx run-many -t typecheck",
+    "affected": "nx affected -t lint test build",
+    "infra:up": "docker compose up -d",
+    "infra:up:full": "docker compose --profile full up -d",
+    "infra:down": "docker compose down",
+    "dev:catalog": "pnpm --filter @lightshop/catalog-service dev",
+    "dev:web": "pnpm --filter @lightshop/web-storefront dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.30.0",
+    "nx": "^21.2.0",
+    "prettier": "^3.6.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "^3.2.4"
+  }
+}

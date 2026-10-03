@@ -1,0 +1,27 @@
+{
+  "id": "grocery",
+  "name": { "en": "Grocery & FMCG" },
+  "version": 1,
+  "defaultTaxCode": "food",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "netQuantity": { "type": "number", "exclusiveMinimum": 0 },
+      "unit": { "type": "string", "enum": ["g", "kg", "ml", "l", "pc", "dozen"] },
+      "soldByWeight": { "type": "boolean", "default": false },
+      "shelfLifeDays": { "type": "integer", "minimum": 0 },
+      "storage": { "type": "string", "enum": ["ambient", "chilled", "frozen"] },
+      "dietary": { "type": "array", "items": { "type": "string", "enum": ["vegetarian", "vegan", "halal", "kosher", "gluten-free", "organic"] } },
+      "allergens": { "type": "array", "items": { "type": "string" } },
+      "ingredients": { "type": "string" }
+    },
+    "required": ["brand", "netQuantity", "unit", "storage"],
+    "additionalProperties": false
+  },
+  "facets": ["brand", "dietary", "storage"],
+  "variantAxes": ["netQuantity"],
+  "compliance": { "requiresSellerLicense": true, "licenseTypes": ["food-safety"], "restrictedRegions": [] },
+  "fulfillment": { "shippable": true, "bulky": false, "coldChain": true, "batchAndExpiryTracked": true, "deliverySlots": true },
+  "returns": { "returnable": false, "windowDays": 0, "refundOnDamageOnly": true }
+}

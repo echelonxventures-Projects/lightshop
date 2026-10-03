@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "services/*"
+  - "libs/*"
+allowBuilds:
+  esbuild: true
+  nx: true
+  "@apollo/protobufjs": false

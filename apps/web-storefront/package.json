@@ -1,0 +1,28 @@
+{
+  "name": "@lightshop/web-storefront",
+  "version": "0.1.0",
+  "private": true,
+  "description": "White-label customer storefront. One deployment serves every tenant, resolved by Host.",
+  "scripts": {
+    "dev": "next dev -p 5678",
+    "build": "next build",
+    "start": "next start -p 5678",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint app lib",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@lightshop/domain-kernel": "workspace:*",
+    "@lightshop/tenancy": "workspace:*",
+    "@lightshop/ui": "workspace:*",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0"
+  }
+}

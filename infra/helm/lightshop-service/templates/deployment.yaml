@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  labels: { app: {{ .Values.name }}, lightshop/region: {{ .Values.region }} }
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels: { app: {{ .Values.name }} }
+  template:
+    metadata:
+      labels: { app: {{ .Values.name }}, lightshop/region: {{ .Values.region }} }
+    spec:
+      securityContext: { runAsNonRoot: true }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: {{ .Values.name }} }
+      containers:
+        - name: {{ .Values.name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: [{ containerPort: {{ .Values.port }} }]
+          env:
+            - { name: REGION, value: {{ .Values.region | quote }} }
+            {{- range $k, $v := .Values.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+          {{- with .Values.secretEnvFrom }}
+          envFrom:
+            {{- range . }}
+            - secretRef: { name: {{ . }} }
+            {{- end }}
+          {{- end }}
+          readinessProbe:
+            httpGet: { path: {{ .Values.healthPath }}, port: {{ .Values.port }} }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: {{ .Values.healthPath }}, port: {{ .Values.port }} }
+            initialDelaySeconds: 15
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

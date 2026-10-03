@@ -1,0 +1,28 @@
+export interface StoreHeaderProps {
+  brandName: string;
+  logoUrl?: string;
+  links: Array<{ href: string; label: string }>;
+}
+
+/** Brand comes entirely from TenantConfig, so nothing in here names a specific store. */
+export function StoreHeader({ brandName, logoUrl, links }: StoreHeaderProps) {
+  return (
+    <header className="ls-header">
+      <div className="ls-container ls-header__inner">
+        <a className="ls-header__brand" href="/">
+          {logoUrl ? (
+            <img src={logoUrl} alt="" width={32} height={32} />
+          ) : (
+            <span className="ls-header__logo" aria-hidden="true">{brandName.charAt(0)}</span>
+          )}
+          {brandName}
+        </a>
+        <nav className="ls-header__nav" aria-label="Categories">
+          {links.map((l) => (
+            <a key={l.href} href={l.href}>{l.label}</a>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}

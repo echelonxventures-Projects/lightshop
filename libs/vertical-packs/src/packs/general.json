@@ -1,0 +1,22 @@
+{
+  "id": "general",
+  "name": { "en": "General Merchandise" },
+  "version": 1,
+  "defaultTaxCode": "general",
+  "attributes": {
+    "type": "object",
+    "properties": {
+      "brand": { "type": "string", "minLength": 1 },
+      "color": { "type": "string" },
+      "material": { "type": "string" },
+      "weightGrams": { "type": "integer", "minimum": 0 }
+    },
+    "required": ["brand"],
+    "additionalProperties": true
+  },
+  "facets": ["brand", "color"],
+  "variantAxes": ["color"],
+  "compliance": { "requiresSellerLicense": false, "restrictedRegions": [] },
+  "fulfillment": { "shippable": true, "bulky": false, "coldChain": false },
+  "returns": { "returnable": true, "windowDays": 30 }
+}
