@@ -10,5 +10,6 @@
 | [0006](0006-zero-vendor-lock-in.md) | Zero vendor lock-in: ports and adapters with open-source defaults | Accepted |
 | [0007](0007-vertical-packs.md) | Industries as Vertical Packs (data, not code) | Accepted |
 | [0008](0008-dependency-versions.md) | Dependency version policy | Accepted |
+| [0009](0009-service-security-baseline.md) | Service security baseline (auth, tenant trust, limits, secure defaults) | Accepted |
 
 Template: Context → Decision → Consequences → Alternatives considered.

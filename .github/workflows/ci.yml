@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  actions: read # nx-set-shas looks up the last successful run to compute affected projects
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -58,6 +62,7 @@ jobs:
       - name: Boot catalog on Postgres and verify seed + outbox drain
         env:
           CATALOG_DATABASE_URL: postgres://lightshop:lightshop@localhost:5432/catalog
+          SEED_DEMO: "true"
         run: |
           node services/catalog/dist/main.js & sleep 6
           curl -sf localhost:4001/health | tee /dev/stderr | grep -q '"outboxPending":0'

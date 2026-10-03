@@ -24,8 +24,9 @@ services/<name>/
 5. Resolve tenancy only through `RequestContext`. Every query is tenant-scoped.
 6. Pick infrastructure through ports from `libs/adapters`. Never import a vendor SDK.
 7. Map application errors to stable GraphQL `extensions.code` values.
-8. Expose `/health` (include outbox depth) and OpenTelemetry traces.
-9. Add the service to the gateway composition, Helm values and CI.
+8. Apply the [security baseline](../adr/0009-service-security-baseline.md): authorize in the application layer, trust tenant headers only from the gateway, keep query limits, and fail fast on an unsafe production config.
+9. Expose `/health` (include outbox depth) and OpenTelemetry traces.
+10. Add the service to the gateway composition, Helm values and CI.
 
 ## Why explicit `@Inject(token)`
 

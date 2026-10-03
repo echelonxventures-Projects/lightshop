@@ -1,5 +1,6 @@
 import { unwrapResolverError } from '@apollo/server/errors';
 import { EventBus, InMemoryEventBus, KafkaEventBus } from '@lightshop/adapters';
+import { DevTokenVerifier, JwksTokenVerifier, TokenVerifier } from '@lightshop/auth';
 import { schemaPath } from '@lightshop/contracts';
 import { FileTenantSource, TenantRegistry } from '@lightshop/tenancy';
 import { VerticalPackRegistry } from '@lightshop/vertical-packs';
@@ -14,6 +15,7 @@ import { CatalogConfig } from './config';
 import { CatalogErrorFilter } from './graphql/catalog-error.filter';
 import { buildContext } from './graphql/context';
 import { JSONScalar } from './graphql/json.scalar';
+import { depthLimit } from './graphql/limits';
 import { OfferResolver, ProductResolver, VerticalPackResolver } from './graphql/catalog.resolver';
 import { HealthController } from './health.controller';
 import { InMemoryProductRepository } from './infrastructure/memory-product-repository';
@@ -21,7 +23,7 @@ import { OutboxRelay } from './infrastructure/outbox-relay';
 import { PostgresProductRepository } from './infrastructure/postgres-product-repository';
 import { seedDemoData } from './seed';
 import {
-  CONFIG, EVENT_BUS, OUTBOX_RELAY, OUTBOX_STORE, PRODUCT_REPOSITORY, TENANT_REGISTRY, VERTICAL_PACKS,
+  CONFIG, EVENT_BUS, OUTBOX_RELAY, OUTBOX_STORE, PRODUCT_REPOSITORY, TENANT_REGISTRY, TOKEN_VERIFIER, VERTICAL_PACKS,
 } from './tokens';
 
 /** Infrastructure adapters chosen by config — Postgres or memory, Kafka or memory. */
@@ -44,6 +46,13 @@ function infrastructureProviders(config: CatalogConfig, overrides: Partial<{ eve
       useFactory: () => TenantRegistry.load(new FileTenantSource(config.tenantsDir)),
     },
     { provide: VERTICAL_PACKS, useFactory: () => new VerticalPackRegistry() },
+    {
+      provide: TOKEN_VERIFIER,
+      useFactory: (): TokenVerifier =>
+        config.auth.mode === 'oidc'
+          ? new JwksTokenVerifier({ issuer: config.auth.issuer, audience: config.auth.audience, jwksUrl: config.auth.jwksUrl })
+          : new DevTokenVerifier(config.auth.secret),
+    },
     {
       provide: OUTBOX_RELAY,
       inject: [OUTBOX_STORE, EVENT_BUS],
@@ -77,11 +86,20 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
         core,
         GraphQLModule.forRootAsync<ApolloFederationDriverConfig>({
           driver: ApolloFederationDriver,
-          inject: [TENANT_REGISTRY],
-          useFactory: (registry: TenantRegistry) => ({
+          inject: [TENANT_REGISTRY, TOKEN_VERIFIER],
+          useFactory: (registry: TenantRegistry, verifier: TokenVerifier) => ({
             typePaths: [schemaPath('catalog')],
             resolvers: { JSON: JSONScalar },
-            context: ({ req }: { req: Request }) => buildContext(req, registry),
+            context: ({ req }: { req: Request }) =>
+              buildContext(req, {
+                registry,
+                verifier,
+                gatewaySecret: config.gatewaySecret,
+                trustHeadersWithoutGateway: !config.production,
+              }),
+            introspection: config.introspection,
+            validationRules: [depthLimit(config.maxQueryDepth)],
+            parseOptions: { maxTokens: config.maxQueryTokens },
             formatError: (formatted, error) => {
               const original = unwrapResolverError(error);
               if (original instanceof CatalogError) {
@@ -101,6 +119,12 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    if (!this.config.gatewaySecret) {
+      this.logger.warn('GATEWAY_SHARED_SECRET not set: trusting x-tenant-id from any caller (development only)');
+    }
+    if (this.config.auth.mode === 'dev') {
+      this.logger.warn('Using development tokens (DEV_AUTH_SECRET). Set OIDC_ISSUER to use a real identity provider.');
+    }
     this.logger.log(
       `tenants: ${this.tenants.all().map((t) => t.id).join(', ')} | storage: ${this.config.databaseUrl ? 'postgres' : 'memory'} | events: ${this.config.eventBus}`,
     );

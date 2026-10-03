@@ -2,6 +2,8 @@ import 'server-only';
 import { StoreContext } from './tenant';
 
 const ENDPOINT = process.env.CATALOG_GRAPHQL_URL ?? 'http://localhost:4001/graphql';
+/** The storefront server acts as a trusted BFF: it proves itself so services honour x-tenant-id. */
+const GATEWAY_SECRET = process.env.GATEWAY_SHARED_SECRET;
 
 export interface MoneyView { amount: string; currency: string; formatted: string }
 export interface OfferView { id: string; sellerId: string; sku: string; price: MoneyView; stock: number; condition: string; moq: number }
@@ -19,7 +21,12 @@ const OFFER = `id sellerId sku stock condition moq price { amount currency forma
 async function query<T>(store: StoreContext, gql: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-tenant-id': store.tenant.id, 'accept-language': store.locale },
+    headers: {
+      'content-type': 'application/json',
+      'x-tenant-id': store.tenant.id,
+      'accept-language': store.locale,
+      ...(GATEWAY_SECRET ? { 'x-lightshop-gateway-token': GATEWAY_SECRET } : {}),
+    },
     body: JSON.stringify({ query: gql, variables }),
     cache: 'no-store',
   });
