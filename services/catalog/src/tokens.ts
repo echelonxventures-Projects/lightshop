@@ -6,3 +6,4 @@ export const TENANT_REGISTRY = Symbol('TENANT_REGISTRY');
 export const VERTICAL_PACKS = Symbol('VERTICAL_PACKS');
 export const OUTBOX_RELAY = Symbol('OUTBOX_RELAY');
 export const CONFIG = Symbol('CONFIG');
+export const TOKEN_VERIFIER = Symbol('TOKEN_VERIFIER');

@@ -9,7 +9,22 @@ pnpm dev:catalog   # catalog subgraph on :4001 (in-memory storage + events, demo
 pnpm dev:web       # storefront on :5678
 ```
 
+`pnpm dev:catalog` turns on demo data (`SEED_DEMO=true`). It is off by default everywhere else.
+
 Open http://acme.localhost:5678 (B2C marketplace) and http://verde.localhost:5678 (B2B wholesale). Both stores run from one storefront process.
+
+## Writing data (auth)
+
+Mutations need a bearer token. Locally, mint a dev token. No identity provider is needed:
+
+```bash
+TOKEN=$(pnpm -s dev:token --tenant acme-mart --roles catalog:admin)
+curl -s localhost:4001/graphql -H 'content-type: application/json' -H 'host: acme.localhost' \
+  -H "authorization: Bearer $TOKEN" \
+  -d '{"query":"mutation { createProduct(input:{vertical:\"general\", titles:{en:\"Mug\"}, categoryPath:[], attributes:{brand:\"Kiln\"}}) { id } }"}'
+```
+
+Sellers: `--roles seller --seller sel_kora` (they can only add offers for `sel_kora`). Production uses a real OIDC provider (`OIDC_ISSUER`). See [ADR-0009](../adr/0009-service-security-baseline.md).
 
 ## With real infrastructure
 
@@ -41,5 +56,8 @@ pnpm --filter @lightshop/ui storybook            # design system on :6006
 | Symptom | Fix |
 |---|---|
 | `Store not found` | The Host must match a domain in `config/tenants/*.json`. Use `acme.localhost` or `verde.localhost`, not a bare IP. |
-| `TENANT_NOT_FOUND` from GraphQL | Send `x-tenant-id` or a known Host header. |
+| `TENANT_NOT_FOUND` from GraphQL | Send a known Host header. `x-tenant-id` is honoured only from callers presenting `GATEWAY_SHARED_SECRET` (or from anyone locally when it is unset). |
+| `UNAUTHENTICATED` / `FORBIDDEN` | Mint a token for the **same** tenant with a write role: `pnpm dev:token --tenant <id> --roles catalog:admin` |
+| No products after start | Demo data is off by default; use `pnpm dev:catalog` or set `SEED_DEMO=true`. |
+| Service refuses to boot in production | It lists the missing secure settings. See ADR-0009. |
 | Outbox pending keeps growing | `EVENT_BUS=kafka` but Kafka is down. Check `/health` and `docker compose ps`. |

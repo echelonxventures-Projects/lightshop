@@ -1,3 +1,4 @@
+import { Roles } from '@lightshop/auth';
 import { TenantRegistry } from '@lightshop/tenancy';
 import { CatalogService, AddOfferCommand, CreateProductCommand } from './application/catalog.service';
 import { RequestContext } from './application/request-context';
@@ -60,6 +61,8 @@ export async function seedDemoData(catalog: CatalogService, registry: TenantRegi
     if (!products) continue;
     const ctx: RequestContext = {
       tenant, tenantId: tenant.id, region: tenant.regions[0]!, locale: tenant.locales[0]!, currency: tenant.currencies[0]!,
+      // Internal system principal: seeding goes through the same authorization path as real writes.
+      principal: { userId: 'system:seed', tenantId: tenant.id, roles: [Roles.CatalogAdmin] },
     };
     if ((await catalog.countProducts(ctx)) > 0) continue;
     for (const { id, offers, ...cmd } of products) {

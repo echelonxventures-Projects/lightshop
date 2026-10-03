@@ -12,13 +12,13 @@ export default defineConfig({
     {
       command: 'node ../../services/catalog/dist/main.js',
       url: 'http://localhost:4101/health',
-      env: { CATALOG_PORT: '4101', CATALOG_DATABASE_URL: '' },
+      env: { CATALOG_PORT: '4101', CATALOG_DATABASE_URL: '', SEED_DEMO: 'true', GATEWAY_SHARED_SECRET: 'e2e-gateway-secret' },
       reuseExistingServer: false,
     },
     {
       command: 'pnpm exec next start -p 3100',
       url: 'http://localhost:3100',
-      env: { CATALOG_GRAPHQL_URL: 'http://localhost:4101/graphql' },
+      env: { CATALOG_GRAPHQL_URL: 'http://localhost:4101/graphql', GATEWAY_SHARED_SECRET: 'e2e-gateway-secret' },
       reuseExistingServer: false,
     },
   ],

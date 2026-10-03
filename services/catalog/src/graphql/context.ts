@@ -1,3 +1,4 @@
+import { AuthError, GATEWAY_TOKEN_HEADER, Principal, TokenVerifier, isTrustedGateway } from '@lightshop/auth';
 import { LOCALE_HEADER, REGION_HEADER, TENANT_HEADER } from '@lightshop/domain-kernel';
 import { TenantRegistry } from '@lightshop/tenancy';
 import type { Request } from 'express';
@@ -7,35 +8,63 @@ import { RequestContext } from '../application/request-context';
 export interface GqlContext {
   req: Request;
   ctx?: RequestContext;
+  /** Why a presented bearer token was rejected (surfaced only when a mutation needs auth). */
+  authError?: string;
+}
+
+export interface ContextDeps {
+  registry: TenantRegistry;
+  verifier: TokenVerifier;
+  gatewaySecret?: string;
+  /** Outside production with no gateway secret configured, identity headers are trusted (local dev). */
+  trustHeadersWithoutGateway: boolean;
 }
 
 /**
- * Resolves the white-label tenant for a request: explicit x-tenant-id (set by the gateway/BFF),
- * else the Host header. Region/locale/currency requests are clamped to what the tenant enabled.
+ * Resolves the white-label tenant and caller for a request.
+ * - Tenant: `x-tenant-id` only from a trusted gateway/BFF; otherwise the Host header. Spoofed headers are ignored.
+ * - Caller: only from a verified bearer token, never from plain headers.
+ * Region/locale/currency are clamped to what the tenant enabled.
  */
-export function buildContext(req: Request, registry: TenantRegistry): GqlContext {
+export async function buildContext(req: Request, deps: ContextDeps): Promise<GqlContext> {
   const header = (name: string) => {
     const v = req.headers[name];
     return (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
   };
-  const tenantId = header(TENANT_HEADER);
-  const tenant = tenantId ? registry.get(tenantId) : registry.resolveHost(req.headers.host);
+  const trusted = deps.gatewaySecret
+    ? isTrustedGateway(header(GATEWAY_TOKEN_HEADER), deps.gatewaySecret)
+    : deps.trustHeadersWithoutGateway;
+
+  const tenantId = trusted ? header(TENANT_HEADER) : undefined;
+  const tenant = tenantId ? deps.registry.get(tenantId) : deps.registry.resolveHost(req.headers.host);
   if (!tenant || tenant.status !== 'live') return { req };
+
+  let principal: Principal | undefined;
+  let authError: string | undefined;
+  const bearer = header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (bearer) {
+    try {
+      principal = await deps.verifier.verify(bearer);
+    } catch (err) {
+      authError = err instanceof AuthError ? err.message : 'Invalid access token';
+    }
+  }
 
   const pick = (wanted: string | undefined, allowed: string[]) =>
     (wanted && allowed.find((a) => a.toLowerCase() === wanted.toLowerCase())) ?? allowed[0]!;
-  const locale = matchLocale(header(LOCALE_HEADER)?.split(',')[0]?.split(';')[0], tenant.locales);
 
   return {
     req,
+    authError,
     ctx: {
       tenant,
       tenantId: tenant.id,
       region: pick(header(REGION_HEADER), tenant.regions),
-      locale,
+      locale: matchLocale(header(LOCALE_HEADER)?.split(',')[0]?.split(';')[0], tenant.locales),
       currency: pick(header('x-currency'), tenant.currencies),
-      userId: header('x-user-id'),
-      organizationId: header('x-organization-id'),
+      principal,
+      userId: principal?.userId,
+      organizationId: principal?.organizationId,
     },
   };
 }
@@ -51,5 +80,6 @@ export function matchLocale(requested: string | undefined, allowed: string[]): s
 
 export function requireContext(gql: GqlContext): RequestContext {
   if (!gql.ctx) throw new CatalogError('TENANT_NOT_FOUND', 'Unknown or inactive tenant');
+  if (gql.authError) throw new CatalogError('UNAUTHENTICATED', gql.authError);
   return gql.ctx;
 }

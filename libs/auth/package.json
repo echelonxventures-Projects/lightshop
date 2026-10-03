@@ -1,0 +1,18 @@
+{
+  "name": "@lightshop/auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vendor-neutral access-token verification (any OIDC provider via JWKS), principals and permission checks.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": { "lightshop-dev-token": "dist/dev-token-cli.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
+  }
+}

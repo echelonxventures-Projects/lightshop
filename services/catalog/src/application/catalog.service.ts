@@ -1,4 +1,5 @@
 import { DomainEvent } from '@lightshop/adapters';
+import { Principal, Roles, hasRole } from '@lightshop/auth';
 import { CatalogEventTypes, OfferAddedPayload, ProductCreatedPayload, Topics } from '@lightshop/contracts';
 import { Money, newId } from '@lightshop/domain-kernel';
 import { VerticalPack, VerticalPackRegistry } from '@lightshop/vertical-packs';
@@ -41,6 +42,7 @@ export class CatalogService {
   }
 
   async createProduct(ctx: RequestContext, cmd: CreateProductCommand, opts: { id?: string } = {}): Promise<Product> {
+    this.authorize(ctx, Roles.CatalogAdmin, Roles.Seller);
     if (!ctx.tenant.verticals.includes(cmd.vertical)) {
       throw new CatalogError('FORBIDDEN_VERTICAL', `Vertical "${cmd.vertical}" is not enabled for ${ctx.tenant.brand.name}`);
     }
@@ -73,6 +75,10 @@ export class CatalogService {
   }
 
   async addOffer(ctx: RequestContext, productId: string, cmd: AddOfferCommand): Promise<Product> {
+    const principal = this.authorize(ctx, Roles.CatalogAdmin, Roles.Seller);
+    if (!hasRole(principal, Roles.CatalogAdmin) && principal.sellerId !== cmd.sellerId) {
+      throw new CatalogError('FORBIDDEN', 'Sellers can only create offers for their own seller account');
+    }
     if (!ctx.tenant.currencies.includes(cmd.currency)) {
       throw new CatalogError('UNSUPPORTED_CURRENCY', `${ctx.tenant.brand.name} does not sell in ${cmd.currency}`);
     }
@@ -120,6 +126,18 @@ export class CatalogService {
 
   async countProducts(ctx: RequestContext): Promise<number> {
     return this.products.count(ctx.tenantId);
+  }
+
+  /**
+   * Writes require an authenticated principal issued for *this* tenant with one of `roles`.
+   * A token from tenant A is useless against tenant B even if the caller controls the Host header.
+   */
+  private authorize(ctx: RequestContext, ...roles: string[]): Principal {
+    const principal = ctx.principal;
+    if (!principal) throw new CatalogError('UNAUTHENTICATED', 'Sign in required');
+    if (principal.tenantId !== ctx.tenantId) throw new CatalogError('FORBIDDEN', 'Token was issued for a different store');
+    if (!hasRole(principal, ...roles)) throw new CatalogError('FORBIDDEN', `Requires one of: ${roles.join(', ')}`);
+    return principal;
   }
 
   private event<T>(ctx: RequestContext, product: Product, type: string, payload: T): DomainEvent<T> {
