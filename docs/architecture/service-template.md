@@ -19,7 +19,7 @@ services/<name>/
 
 1. Add the SDL to `libs/contracts/schema/<name>.graphql` and the event types/topics to `libs/contracts/src/events.ts`.
 2. Model the aggregate in `domain/` with unit tests for its invariants.
-3. Write a repository port. Its `save(aggregate, events)` must be atomic (transactional outbox).
+3. Write a repository port. Its `save(aggregate, events)` must be atomic: use `appendToOutbox` / `PostgresOutbox` / `InMemoryOutbox` and `OutboxRelay` from `libs/outbox`.
 4. Provide **both** an in-memory and a Postgres adapter, so `pnpm dev` and tests need no Docker.
 5. Resolve tenancy only through `RequestContext`. Every query is tenant-scoped.
 6. Pick infrastructure through ports from `libs/adapters`. Never import a vendor SDK.

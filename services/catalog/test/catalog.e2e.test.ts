@@ -8,7 +8,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CatalogModule } from '../src/catalog.module';
 import { loadConfig } from '../src/config';
-import { OutboxRelay } from '../src/infrastructure/outbox-relay';
+import { OutboxRelay } from '@lightshop/outbox';
 import { OUTBOX_RELAY } from '../src/tokens';
 
 let app: INestApplication;

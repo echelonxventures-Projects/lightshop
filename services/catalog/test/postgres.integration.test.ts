@@ -3,7 +3,7 @@ import { TestDatabase, createTestDatabase, integration } from '@lightshop/testin
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Product } from '../src/domain/product';
 import { PostgresProductRepository } from '../src/infrastructure/postgres-product-repository';
-import { OutboxMessage } from '../src/infrastructure/product-repository';
+import { OutboxMessage } from '@lightshop/outbox';
 
 const BASE_URL = integration('TEST_DATABASE_URL');
 

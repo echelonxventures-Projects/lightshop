@@ -1,7 +1,7 @@
 import { AuthError, GATEWAY_TOKEN_HEADER, Principal, TokenVerifier, isTrustedGateway } from '@lightshop/auth';
 import { LOCALE_HEADER, REGION_HEADER, TENANT_HEADER } from '@lightshop/domain-kernel';
 import { annotateActiveSpan } from '@lightshop/observability';
-import { TenantRegistry } from '@lightshop/tenancy';
+import { TenantLookup } from '@lightshop/tenancy';
 import type { Request } from 'express';
 import { CatalogError } from '../application/errors';
 import { RequestContext } from '../application/request-context';
@@ -14,7 +14,7 @@ export interface GqlContext {
 }
 
 export interface ContextDeps {
-  registry: TenantRegistry;
+  registry: TenantLookup;
   verifier: TokenVerifier;
   gatewaySecret?: string;
   /** Outside production with no gateway secret configured, identity headers are trusted (local dev). */

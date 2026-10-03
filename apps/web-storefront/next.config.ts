@@ -7,7 +7,7 @@ const config: NextConfig = {
   output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
   poweredByHeader: false,
   // Node-only libs (fs-based tenant loading) stay on the server.
-  serverExternalPackages: ['@lightshop/tenancy'],
+  serverExternalPackages: ['@lightshop/tenancy', '@lightshop/auth'],
 };
 
 export default config;

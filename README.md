@@ -27,7 +27,8 @@ To use real Postgres and Kafka: `cp .env.example .env && pnpm infra:up`. See the
 
 ```
 apps/web-storefront     Next.js white-label storefront (built)    · other apps planned (see READMEs)
-services/catalog        Catalog subgraph: reference service (built) · 26 other services planned
+services/catalog        Catalog subgraph: reference service (built)
+services/tenant-registry  Store configs: versioned edits, launch workflow (Temporal), live distribution (built)
 libs/domain-kernel      Money, Currency, Address, TenantContext, i18n
 libs/tenancy            TenantConfig schema, host resolution, theme → CSS variables
 libs/adapters           Ports + open-source default adapters (events, payments, tax, search, storage)
@@ -37,6 +38,7 @@ libs/ui                 Token-driven design system + Storybook
 libs/auth               OIDC/JWKS token verification, roles, dev tokens, gateway trust
 libs/observability      OpenTelemetry bootstrap (OTLP, any backend) + trace-correlated JSON logs
 libs/testing            Fixtures, dev tokens, throwaway Postgres DBs, integration-test gating
+libs/outbox             Transactional outbox stores + relay shared by all services
 config/tenants          One JSON file per store
 infra/                  Helm chart, ArgoCD ApplicationSet, cloud-neutral Terraform, local compose init
 docs/                   Architecture, ADRs, 24 PRDs, roadmap & estimates, guides, runbooks
