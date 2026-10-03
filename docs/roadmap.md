@@ -12,6 +12,22 @@ Durations assume the team ramps up as shown. Estimates are in **engineer-months 
 | **3 — Growth & Intelligence** | M15–M24 | Retail media, recommendations + LTR, AI assistant, dynamic pricing, loyalty/membership, live commerce, fraud ML, forecasting, quick commerce, cross-border | Ads revenue live. Recs drive ≥ 15% of GMV. Fraud loss < target bps. |
 | **4 — Ecosystem** | M24+ | All vertical packs, self-serve SaaS onboarding, partner app marketplace, fintech (BNPL, seller loans), logistics-as-a-service | Self-serve tenants onboard with no human involvement. |
 
+## Phase 0 status
+
+| Item | Status | Where |
+|---|---|---|
+| Monorepo, tooling, CI, repo hygiene (LICENSE, SECURITY, CODEOWNERS, Renovate) | ✅ | root, `.github/` |
+| Shared libs: domain-kernel, tenancy (live registry), adapters, vertical-packs, contracts, ui, auth, observability, testing, outbox, api-sdk, graphql-security | ✅ | `libs/` |
+| Catalog reference service (auth, tenant trust, outbox, metrics) | ✅ | `services/catalog` |
+| Tenant registry + zero-code launch workflow (Temporal) | ✅ | `services/tenant-registry` |
+| GraphQL gateway (MIT federation, edge security) | ✅ | `services/gateway` |
+| Identity: OIDC sign-in, claims contract, Keycloak realm as code | ✅ | `apps/web-storefront/app/auth`, `infra/keycloak` |
+| White-label storefront (multi-tenant by Host, themes, sign-in) | ✅ | `apps/web-storefront` |
+| Observability (OTel traces/metrics, JSON logs, Grafana dashboard) | ✅ | `libs/observability`, `infra/observability` |
+| Integration tests on real Postgres, Kafka, Keycloak, Temporal (test server) | ✅ | CI jobs `integration`, `identity`, service tests |
+| Infra: Terraform cells for AWS/GCP/Azure/on-prem, Helm, ArgoCD, images, deploy workflow | ✅ deployment-ready | `infra/`, [deployment runbook](runbooks/deployment.md) |
+| **Staging running in 2 cells** (exit criterion) | ⏳ needs client inputs | cloud account(s), cell regions, DNS domains, production IdP realm, secrets backend; then follow the runbook |
+
 ## Team topology (~60–70 engineers during Phases 1–3, plus ~25% design, PM and QA)
 
 | Group | Squads | Contexts owned |
