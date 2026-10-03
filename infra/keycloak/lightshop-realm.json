@@ -37,13 +37,48 @@
   "clientScopes": [
     {
       "name": "lightshop",
-      "description": "LightShop claims contract: tenant_id, roles, seller_id, org_id, aud=lightshop",
+      "description": "LightShop claims contract (self-contained, no built-in scopes needed): sub, name, email, tenant_id, roles, seller_id, org_id, aud=lightshop",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
         "display.on.consent.screen": "false"
       },
       "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "email",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        },
         {
           "name": "tenant_id",
           "protocol": "openid-connect",
@@ -144,9 +179,6 @@
         "post.logout.redirect.uris": "http://*.localhost:5678/*##http://localhost:5678/*"
       },
       "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
         "lightshop"
       ]
     },
@@ -161,9 +193,6 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
         "lightshop"
       ]
     }

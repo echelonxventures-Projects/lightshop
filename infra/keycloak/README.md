@@ -3,9 +3,13 @@
 `lightshop-realm.json` is the **development** realm, imported by `docker compose --profile full up`
 (`start-dev --import-realm`). It encodes the platform's IdP-agnostic **claims contract**:
 
+The `lightshop` client scope is self-contained: it emits every claim below itself, so it doesn't depend on
+Keycloak's built-in scopes. Since Keycloak 25, `sub` comes from the built-in `basic` scope, which a realm that
+defines its own scopes doesn't get.
+
 | Claim (access token) | Source | Used by |
 |---|---|---|
-| `sub` | user id | everything |
+| `sub` | user id (`oidc-sub-mapper`) | everything |
 | `tenant_id` | user attribute (admin-editable only; `*` for platform operators) | tenant binding of every token |
 | `roles` | realm roles: `buyer`, `seller`, `catalog:admin`, `tenant:admin`, `platform:admin` | authorization |
 | `seller_id` / `org_id` | user attributes | seller ownership, B2B organizations |
