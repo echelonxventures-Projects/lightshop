@@ -1,5 +1,5 @@
 import { Roles } from '@lightshop/auth';
-import { TenantRegistry } from '@lightshop/tenancy';
+import { TenantLookup } from '@lightshop/tenancy';
 import { CatalogService, AddOfferCommand, CreateProductCommand } from './application/catalog.service';
 import { RequestContext } from './application/request-context';
 
@@ -54,7 +54,7 @@ const DEMO: Record<string, SeedProduct[]> = {
   ],
 };
 
-export async function seedDemoData(catalog: CatalogService, registry: TenantRegistry): Promise<number> {
+export async function seedDemoData(catalog: CatalogService, registry: TenantLookup): Promise<number> {
   let created = 0;
   for (const tenant of registry.all()) {
     const products = DEMO[tenant.id];

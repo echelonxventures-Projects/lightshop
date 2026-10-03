@@ -1,18 +1,27 @@
 import 'server-only';
-import { FileTenantSource, TenantConfig, TenantRegistry } from '@lightshop/tenancy';
+import { GATEWAY_TOKEN_HEADER } from '@lightshop/auth';
+import { FileTenantSource, HttpTenantSource, LiveTenantRegistry, TenantConfig } from '@lightshop/tenancy';
 import { headers } from 'next/headers';
 import { join } from 'node:path';
 import { cache } from 'react';
 
-let registry: Promise<TenantRegistry> | undefined;
+let registry: Promise<LiveTenantRegistry> | undefined;
 
 /**
- * Tenant configs are loaded once per server process. A new store = a new config file
- * (or, later, a row in the tenant-registry service) — this app never changes.
+ * Tenant configs come from the tenant-registry service (TENANTS_URL) or, locally, config files.
+ * Both are refreshed in the background: a store published in the admin console appears here
+ * within TENANTS_REFRESH_MS with no deploy or restart.
  */
-function getRegistry(): Promise<TenantRegistry> {
-  registry ??= TenantRegistry.load(
-    new FileTenantSource(process.env.TENANTS_DIR ?? join(process.cwd(), '..', '..', 'config', 'tenants')),
+function getRegistry(): Promise<LiveTenantRegistry> {
+  const secret = process.env.GATEWAY_SHARED_SECRET;
+  registry ??= LiveTenantRegistry.start(
+    process.env.TENANTS_URL
+      ? new HttpTenantSource({ url: process.env.TENANTS_URL, headers: secret ? { [GATEWAY_TOKEN_HEADER]: secret } : {} })
+      : new FileTenantSource(process.env.TENANTS_DIR ?? join(process.cwd(), '..', '..', 'config', 'tenants')),
+    {
+      intervalMs: Number(process.env.TENANTS_REFRESH_MS ?? 15_000),
+      onError: (e) => console.error(`tenant refresh failed, keeping last good configs: ${e.message}`),
+    },
   );
   return registry;
 }

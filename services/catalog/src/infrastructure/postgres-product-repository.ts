@@ -1,9 +1,8 @@
-import { Money, newId } from '@lightshop/domain-kernel';
+import { Money } from '@lightshop/domain-kernel';
+import { OUTBOX_MIGRATIONS, OutboxEntry, OutboxMessage, OutboxStore, PostgresOutbox, appendToOutbox } from '@lightshop/outbox';
 import { Pool, PoolClient } from 'pg';
 import { Offer, Product, ProductStatus } from '../domain/product';
-import {
-  OutboxMessage, OutboxStore, Page, PageRequest, ProductRepository, decodeCursor,
-} from './product-repository';
+import { Page, PageRequest, ProductRepository, decodeCursor } from './product-repository';
 
 const MIGRATIONS = [
   `CREATE TABLE IF NOT EXISTS products (
@@ -37,14 +36,7 @@ const MIGRATIONS = [
      UNIQUE (tenant_id, product_id, seller_id, sku),
      FOREIGN KEY (tenant_id, product_id) REFERENCES products (tenant_id, id) ON DELETE CASCADE
    )`,
-  `CREATE TABLE IF NOT EXISTS outbox (
-     id           text        PRIMARY KEY,
-     topic        text        NOT NULL,
-     payload      jsonb       NOT NULL,
-     created_at   timestamptz NOT NULL DEFAULT now(),
-     published_at timestamptz
-   )`,
-  `CREATE INDEX IF NOT EXISTS outbox_pending ON outbox (created_at) WHERE published_at IS NULL`,
+  ...OUTBOX_MIGRATIONS,
 ];
 
 interface ProductRow {
@@ -59,7 +51,11 @@ interface OfferRow {
 }
 
 export class PostgresProductRepository implements ProductRepository, OutboxStore {
-  constructor(private readonly pool: Pool) {}
+  private readonly outbox: PostgresOutbox;
+
+  constructor(private readonly pool: Pool) {
+    this.outbox = new PostgresOutbox(pool);
+  }
 
   static async connect(url: string): Promise<PostgresProductRepository> {
     const pool = new Pool({ connectionString: url, max: 10 });
@@ -67,7 +63,7 @@ export class PostgresProductRepository implements ProductRepository, OutboxStore
     return new PostgresProductRepository(pool);
   }
 
-  async save(product: Product, events: Parameters<ProductRepository['save']>[1]): Promise<void> {
+  async save(product: Product, events: OutboxEntry[]): Promise<void> {
     const p = product.toProps();
     await this.tx(async (c) => {
       await c.query(
@@ -87,9 +83,7 @@ export class PostgresProductRepository implements ProductRepository, OutboxStore
           [p.tenantId, o.id, p.id, o.sellerId, o.sku, o.price.amountMinor, o.price.currency, o.stock, o.condition, o.moq],
         );
       }
-      for (const e of events) {
-        await c.query(`INSERT INTO outbox (id, topic, payload) VALUES ($1,$2,$3)`, [newId('obx'), e.topic, e.event]);
-      }
+      await appendToOutbox(c, events);
     });
   }
 
@@ -124,24 +118,12 @@ export class PostgresProductRepository implements ProductRepository, OutboxStore
     return Number(rows[0]?.n ?? 0);
   }
 
-  async drain(limit: number, publish: (m: OutboxMessage[]) => Promise<void>): Promise<number> {
-    return this.tx(async (c) => {
-      // SKIP LOCKED lets several relay replicas drain concurrently without double-publishing.
-      const { rows } = await c.query<{ id: string; topic: string; payload: OutboxMessage['event'] }>(
-        `SELECT id, topic, payload FROM outbox WHERE published_at IS NULL
-         ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED`,
-        [limit],
-      );
-      if (rows.length === 0) return 0;
-      await publish(rows.map((r) => ({ id: r.id, topic: r.topic, event: r.payload })));
-      await c.query(`UPDATE outbox SET published_at = now() WHERE id = ANY($1)`, [rows.map((r) => r.id)]);
-      return rows.length;
-    });
+  drain(limit: number, publish: (m: OutboxMessage[]) => Promise<void>): Promise<number> {
+    return this.outbox.drain(limit, publish);
   }
 
-  async pendingCount(): Promise<number> {
-    const { rows } = await this.pool.query<{ n: string }>(`SELECT count(*) AS n FROM outbox WHERE published_at IS NULL`);
-    return Number(rows[0]?.n ?? 0);
+  pendingCount(): Promise<number> {
+    return this.outbox.pendingCount();
   }
 
   async close(): Promise<void> {

@@ -1,17 +1,15 @@
-import { newId } from '@lightshop/domain-kernel';
+import { InMemoryOutbox, OutboxEntry, OutboxMessage, OutboxStore } from '@lightshop/outbox';
 import { Product } from '../domain/product';
-import {
-  OutboxMessage, OutboxStore, Page, PageRequest, ProductRepository, decodeCursor,
-} from './product-repository';
+import { Page, PageRequest, ProductRepository, decodeCursor } from './product-repository';
 
 /** Zero-dependency adapter: tests and `pnpm dev:catalog` without Docker. */
 export class InMemoryProductRepository implements ProductRepository, OutboxStore {
   private readonly products = new Map<string, Product>();
-  private readonly outbox: Array<OutboxMessage & { publishedAt?: Date }> = [];
+  private readonly outbox = new InMemoryOutbox();
 
-  async save(product: Product, events: Parameters<ProductRepository['save']>[1]): Promise<void> {
+  async save(product: Product, events: OutboxEntry[]): Promise<void> {
     this.products.set(`${product.tenantId}:${product.id}`, Product.rehydrate(product.toProps()));
-    for (const e of events) this.outbox.push({ id: newId('obx'), ...e });
+    this.outbox.append(events);
   }
 
   async findById(tenantId: string, id: string): Promise<Product | undefined> {
@@ -36,16 +34,11 @@ export class InMemoryProductRepository implements ProductRepository, OutboxStore
     return [...this.products.values()].filter((p) => p.tenantId === tenantId).length;
   }
 
-  async drain(limit: number, publish: (m: OutboxMessage[]) => Promise<void>): Promise<number> {
-    const batch = this.outbox.filter((m) => !m.publishedAt).slice(0, limit);
-    if (batch.length === 0) return 0;
-    await publish(batch.map(({ id, topic, event }) => ({ id, topic, event })));
-    const now = new Date();
-    batch.forEach((m) => (m.publishedAt = now));
-    return batch.length;
+  drain(limit: number, publish: (m: OutboxMessage[]) => Promise<void>): Promise<number> {
+    return this.outbox.drain(limit, publish);
   }
 
-  async pendingCount(): Promise<number> {
-    return this.outbox.filter((m) => !m.publishedAt).length;
+  pendingCount(): Promise<number> {
+    return this.outbox.pendingCount();
   }
 }

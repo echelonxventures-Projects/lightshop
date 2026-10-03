@@ -7,6 +7,7 @@ pnpm install
 pnpm build
 pnpm dev:catalog   # catalog subgraph on :4001 (in-memory storage + events, demo data seeded)
 pnpm dev:web       # storefront on :5678
+pnpm dev:registry  # optional: tenant-registry on :4002 (then set TENANTS_URL for catalog/web)
 ```
 
 `pnpm dev:catalog` turns on demo data (`SEED_DEMO=true`). It is off by default everywhere else.

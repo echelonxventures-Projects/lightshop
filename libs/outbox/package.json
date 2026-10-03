@@ -1,0 +1,23 @@
+{
+  "name": "@lightshop/outbox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Transactional outbox: Postgres + in-memory stores and the relay that publishes to the EventBus port.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@lightshop/adapters": "workspace:*",
+    "@lightshop/domain-kernel": "workspace:*",
+    "@lightshop/observability": "workspace:*",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.0"
+  }
+}

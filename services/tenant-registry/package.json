@@ -1,0 +1,45 @@
+{
+  "name": "@lightshop/tenant-registry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "System of record for white-label TenantConfig: versioned edits, publish/suspend, live distribution to services, launch workflow (Temporal).",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "SEED_TENANTS_DIR=../../config/tenants tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "worker": "node dist/worker.js",
+    "test": "vitest run",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@lightshop/adapters": "workspace:*",
+    "@lightshop/auth": "workspace:*",
+    "@lightshop/domain-kernel": "workspace:*",
+    "@lightshop/observability": "workspace:*",
+    "@lightshop/outbox": "workspace:*",
+    "@lightshop/tenancy": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@temporalio/activity": "^1.13.0",
+    "@temporalio/client": "^1.13.0",
+    "@temporalio/worker": "^1.13.0",
+    "@temporalio/workflow": "^1.13.0",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "@lightshop/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@lightshop/testing": "workspace:*",
+    "@nestjs/testing": "^11.1.0",
+    "@temporalio/testing": "^1.13.0",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.3",
+    "supertest": "^7.1.0",
+    "tsx": "^4.20.0"
+  }
+}

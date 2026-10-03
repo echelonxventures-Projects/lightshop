@@ -1,13 +1,16 @@
 import { EventBus } from '@lightshop/adapters';
 import { metrics } from '@lightshop/observability';
-import { Logger } from '@nestjs/common';
-import { OutboxStore } from './product-repository';
+import { OutboxMessage, OutboxStore } from './types';
+
+export interface RelayLogger {
+  log(message: string): void;
+  error(message: string): void;
+}
 
 /** Polls the outbox and publishes to the event bus. At-least-once: consumers must be idempotent on event.id. */
 export class OutboxRelay {
   private timer?: NodeJS.Timeout;
   private running = false;
-  private readonly logger = new Logger(OutboxRelay.name);
   private pending = 0;
   private readonly meter = metrics.getMeter('lightshop.outbox');
   private readonly published = this.meter.createCounter('lightshop.outbox.published', {
@@ -20,15 +23,14 @@ export class OutboxRelay {
   constructor(
     private readonly store: OutboxStore,
     private readonly bus: EventBus,
-    private readonly intervalMs = 500,
-    private readonly batchSize = 100,
+    private readonly options: { intervalMs?: number; batchSize?: number; logger?: RelayLogger } = {},
   ) {}
 
   start(): void {
     this.meter
       .createObservableGauge('lightshop.outbox.pending', { description: 'Unpublished events waiting in the outbox' })
       .addCallback((r) => r.observe(this.pending));
-    this.timer = setInterval(() => void this.tick(), this.intervalMs);
+    this.timer = setInterval(() => void this.tick(), this.options.intervalMs ?? 500);
   }
 
   async stop(): Promise<void> {
@@ -39,16 +41,18 @@ export class OutboxRelay {
   async flush(): Promise<number> {
     let total = 0;
     for (let n = -1; n !== 0; total += n) {
-      n = await this.store.drain(this.batchSize, async (messages) => {
-        const byTopic = new Map<string, typeof messages>();
-        messages.forEach((m) => byTopic.set(m.topic, [...(byTopic.get(m.topic) ?? []), m]));
-        for (const [topic, msgs] of byTopic) {
-          await this.bus.publish(topic, msgs.map((m) => m.event));
-          this.published.add(msgs.length, { topic });
-        }
-      });
+      n = await this.store.drain(this.options.batchSize ?? 100, (messages) => this.publish(messages));
     }
     return total;
+  }
+
+  private async publish(messages: OutboxMessage[]): Promise<void> {
+    const byTopic = new Map<string, OutboxMessage[]>();
+    messages.forEach((m) => byTopic.set(m.topic, [...(byTopic.get(m.topic) ?? []), m]));
+    for (const [topic, msgs] of byTopic) {
+      await this.bus.publish(topic, msgs.map((m) => m.event));
+      this.published.add(msgs.length, { topic });
+    }
   }
 
   private async tick(): Promise<void> {
@@ -56,11 +60,11 @@ export class OutboxRelay {
     this.running = true;
     try {
       const n = await this.flush();
-      if (n > 0) this.logger.log(`published ${n} event(s)`);
+      if (n > 0) this.options.logger?.log(`published ${n} event(s)`);
       this.pending = await this.store.pendingCount();
     } catch (err) {
       this.failures.add(1);
-      this.logger.error(`outbox publish failed, will retry: ${(err as Error).message}`);
+      this.options.logger?.error(`outbox publish failed, will retry: ${(err as Error).message}`);
     } finally {
       this.running = false;
     }

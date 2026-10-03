@@ -1,5 +1,5 @@
 import { Controller, Get, Inject } from '@nestjs/common';
-import { OutboxStore } from './infrastructure/product-repository';
+import { OutboxStore } from '@lightshop/outbox';
 import { OUTBOX_STORE } from './tokens';
 
 @Controller('health')

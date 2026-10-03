@@ -3,6 +3,7 @@ packages:
   - "services/*"
   - "libs/*"
 allowBuilds:
+  "@swc/core": true
   esbuild: true
   nx: true
   "@apollo/protobufjs": false

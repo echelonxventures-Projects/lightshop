@@ -31,7 +31,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "@lightshop/auth": "workspace:*",
-    "@lightshop/observability": "workspace:*"
+    "@lightshop/observability": "workspace:*",
+    "@lightshop/outbox": "workspace:*"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.0",

@@ -1,8 +1,9 @@
 import { unwrapResolverError } from '@apollo/server/errors';
 import { EventBus, InMemoryEventBus, KafkaEventBus } from '@lightshop/adapters';
-import { DevTokenVerifier, JwksTokenVerifier, TokenVerifier } from '@lightshop/auth';
+import { DevTokenVerifier, GATEWAY_TOKEN_HEADER, JwksTokenVerifier, TokenVerifier } from '@lightshop/auth';
+import { OutboxRelay } from '@lightshop/outbox';
 import { schemaPath } from '@lightshop/contracts';
-import { FileTenantSource, TenantRegistry } from '@lightshop/tenancy';
+import { FileTenantSource, HttpTenantSource, LiveTenantRegistry, TenantLookup } from '@lightshop/tenancy';
 import { VerticalPackRegistry } from '@lightshop/vertical-packs';
 import { ApolloFederationDriver, ApolloFederationDriverConfig } from '@nestjs/apollo';
 import { DynamicModule, Inject, Logger, Module, OnApplicationBootstrap, OnApplicationShutdown, Provider } from '@nestjs/common';
@@ -19,7 +20,6 @@ import { depthLimit } from './graphql/limits';
 import { OfferResolver, ProductResolver, VerticalPackResolver } from './graphql/catalog.resolver';
 import { HealthController } from './health.controller';
 import { InMemoryProductRepository } from './infrastructure/memory-product-repository';
-import { OutboxRelay } from './infrastructure/outbox-relay';
 import { PostgresProductRepository } from './infrastructure/postgres-product-repository';
 import { seedDemoData } from './seed';
 import {
@@ -43,7 +43,21 @@ function infrastructureProviders(config: CatalogConfig, overrides: Partial<{ eve
     },
     {
       provide: TENANT_REGISTRY,
-      useFactory: () => TenantRegistry.load(new FileTenantSource(config.tenantsDir)),
+      // Live: new or edited stores apply within tenantsRefreshMs, no restart (zero-code launch).
+      useFactory: () => {
+        const logger = new Logger('Tenants');
+        const source = config.tenantsUrl
+          ? new HttpTenantSource({
+              url: config.tenantsUrl,
+              headers: config.gatewaySecret ? { [GATEWAY_TOKEN_HEADER]: config.gatewaySecret } : {},
+            })
+          : new FileTenantSource(config.tenantsDir);
+        return LiveTenantRegistry.start(source, {
+          intervalMs: config.tenantsRefreshMs,
+          onChange: (r) => logger.log(`tenant configs reloaded (${r.all().length} stores)`),
+          onError: (e) => logger.error(`tenant refresh failed, keeping last good configs: ${e.message}`),
+        });
+      },
     },
     { provide: VERTICAL_PACKS, useFactory: () => new VerticalPackRegistry() },
     {
@@ -56,7 +70,8 @@ function infrastructureProviders(config: CatalogConfig, overrides: Partial<{ eve
     {
       provide: OUTBOX_RELAY,
       inject: [OUTBOX_STORE, EVENT_BUS],
-      useFactory: (store, bus) => new OutboxRelay(store, bus, config.outboxIntervalMs),
+      useFactory: (store, bus) =>
+        new OutboxRelay(store, bus, { intervalMs: config.outboxIntervalMs, logger: new Logger(OutboxRelay.name) }),
     },
   ];
 }
@@ -73,7 +88,7 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
     @Inject(OUTBOX_RELAY) private readonly relay: OutboxRelay,
     @Inject(EVENT_BUS) private readonly bus: EventBus,
     @Inject(CatalogService) private readonly catalog: CatalogService,
-    @Inject(TENANT_REGISTRY) private readonly tenants: TenantRegistry,
+    @Inject(TENANT_REGISTRY) private readonly tenants: LiveTenantRegistry,
     @Inject(PRODUCT_REPOSITORY) private readonly repo: unknown,
   ) {}
 
@@ -87,7 +102,7 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
         GraphQLModule.forRootAsync<ApolloFederationDriverConfig>({
           driver: ApolloFederationDriver,
           inject: [TENANT_REGISTRY, TOKEN_VERIFIER],
-          useFactory: (registry: TenantRegistry, verifier: TokenVerifier) => ({
+          useFactory: (registry: TenantLookup, verifier: TokenVerifier) => ({
             typePaths: [schemaPath('catalog')],
             resolvers: { JSON: JSONScalar },
             context: ({ req }: { req: Request }) =>
@@ -140,6 +155,7 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
   }
 
   async onApplicationShutdown(): Promise<void> {
+    this.tenants.stop();
     await this.relay.stop();
     await this.bus.close();
     if (this.repo instanceof PostgresProductRepository) await this.repo.close();

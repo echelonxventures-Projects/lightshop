@@ -17,6 +17,8 @@ export const Roles = {
   Seller: 'seller',
   Buyer: 'buyer',
   PlatformAdmin: 'platform:admin',
+  /** Manages one white-label store's own config (brand, theme, features); cannot change status or claim domains of others. */
+  TenantAdmin: 'tenant:admin',
 } as const;
 
 export function hasRole(principal: Principal, ...roles: string[]): boolean {

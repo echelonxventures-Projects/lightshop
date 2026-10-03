@@ -12,6 +12,10 @@ export interface CatalogConfig {
   eventBus: 'memory' | 'kafka';
   kafkaBrokers: string[];
   tenantsDir: string;
+  /** Tenant-registry endpoint (e.g. http://tenant-registry/v1/tenants?status=live). Unset → read tenantsDir. */
+  tenantsUrl?: string;
+  /** How often tenant configs are refreshed without a restart. */
+  tenantsRefreshMs: number;
   /** Loads demo products. Off unless explicitly enabled. */
   seedDemo: boolean;
   outboxIntervalMs: number;
@@ -42,6 +46,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CatalogConfig 
     kafkaBrokers: (env.KAFKA_BROKERS ?? 'localhost:9092').split(','),
     // Same depth from src/ and dist/: services/catalog/{src,dist} → repo root.
     tenantsDir: env.TENANTS_DIR ?? join(__dirname, '..', '..', '..', 'config', 'tenants'),
+    tenantsUrl: env.TENANTS_URL || undefined,
+    tenantsRefreshMs: Number(env.TENANTS_REFRESH_MS ?? 15_000),
     seedDemo: env.SEED_DEMO === 'true',
     outboxIntervalMs: Number(env.OUTBOX_INTERVAL_MS ?? 500),
     auth,

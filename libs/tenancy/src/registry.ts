@@ -1,3 +1,4 @@
+import type { TenantLookup } from './live-registry';
 import { TenantConfig, parseTenantConfig } from './tenant-config';
 
 /** Port for wherever tenant configs live (file system now, tenant-registry service later). */
@@ -9,7 +10,7 @@ export interface TenantSource {
  * In-memory index of tenants by id and hostname. Validates every config up front and rejects
  * duplicate ids or domains so one tenant can never shadow another.
  */
-export class TenantRegistry {
+export class TenantRegistry implements TenantLookup {
   private readonly byId = new Map<string, TenantConfig>();
   private readonly byHost = new Map<string, TenantConfig>();
 

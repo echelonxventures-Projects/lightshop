@@ -1,10 +1,12 @@
 # Launch a White-Label Store (zero code)
 
-A store is entirely defined by a `TenantConfig`, with no code change or deploy.
+A store is entirely defined by a `TenantConfig`, with no code change, deploy or restart.
+
+There are two ways to manage configs, with the same schema:
+- **Tenant registry (recommended):** `PUT /v1/tenants/<id>` then `POST /v1/tenants/<id>/launch`. See [tenant-registry](../../services/tenant-registry/README.md). The admin console will call the same API.
+- **Files:** `config/tenants/<id>.json`, for local development and as the registry's one-time import.
 
 ## 1. Write the config
-
-Create `config/tenants/<id>.json`. In Phase 1 this moves to the admin console and tenant-registry service, with the same schema:
 
 ```json
 {
@@ -30,9 +32,11 @@ Fields and defaults: `libs/tenancy/src/tenant-config.ts`. Invalid configs fail a
 pnpm --filter @lightshop/tenancy test   # loads and validates every config in config/tenants
 ```
 
-## 3. Restart (Phase 0) or publish (Phase 1+)
+## 3. Launch
 
-Phase 0 loads configs at startup, so restart the catalog service and storefront. From Phase 1, `publishTenant` emits `tenancy.tenant.v1` and services hot-reload.
+With the registry: `POST /v1/tenants/<id>/launch` validates the config, verifies domain ownership through a DNS TXT record, and publishes. Services pick it up within `TENANTS_REFRESH_MS` (default 15 s).
+
+With files: services re-read `config/tenants` on the same interval. No restart is needed either way.
 
 ## 4. Point DNS
 
