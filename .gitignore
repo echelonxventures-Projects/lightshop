@@ -15,3 +15,7 @@ playwright-report/
 .terraform/
 *.tfstate*
 infra/helm/*/charts/
+
+# macOS/iCloud sync conflict copies ("file 2.ts") — never commit
+* 2.*
+* 2

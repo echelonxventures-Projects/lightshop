@@ -251,3 +251,34 @@ jobs:
           for i in catalog tenant-registry gateway web-storefront; do
             docker push "${{ steps.img.outputs.registry }}/$i:${{ steps.img.outputs.tag }}"
           done
+
+  # The production-like stack (docs/runbooks/local-production.md) on every PR: same images, NODE_ENV=production,
+  # Keycloak, Temporal + worker, Kafka, Postgres, observability, ingress — then the full end-to-end suite.
+  stack:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # The full stack (4 built images + Keycloak, Temporal, Kafka, observability) exceeds the runner's default
+      # free disk; remove preinstalled toolchains this job never uses (~30 GB).
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          docker system prune -af >/dev/null
+          df -h /
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lightshop/web-storefront exec playwright install --with-deps chromium
+      - name: Start the stack
+        run: pnpm local:up
+      - name: End-to-end suite against the stack
+        run: pnpm local:test
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose --profile stack logs --tail 80
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: stack-test-results, path: apps/web-storefront/test-results }

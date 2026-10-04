@@ -18,7 +18,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "ls.envList" -}}
-{{- $env := merge (deepCopy .Values.env) .Values.global.env -}}
+{{- $env := merge (deepCopy (.Values.env | default dict)) (.Values.global.env | default dict) -}}
 - name: REGION
   value: {{ .Values.global.region | quote }}
 - name: DEPLOY_ENV
@@ -27,7 +27,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - name: {{ $k }}
   value: {{ $v | quote }}
 {{- end }}
-{{- $secretEnv := merge (deepCopy .Values.secretEnv) .Values.global.secretEnv -}}
+{{- $secretEnv := merge (deepCopy (.Values.secretEnv | default dict)) (.Values.global.secretEnv | default dict) -}}
 {{- range $k, $v := $secretEnv }}
 - name: {{ $k }}
   valueFrom:

@@ -22,7 +22,14 @@
     "infra:up:obs": "docker compose --profile observability up -d",
     "dev:registry": "pnpm --filter @lightshop/tenant-registry dev",
     "infra:up:identity": "docker compose --profile identity up -d",
-    "dev:gateway": "pnpm --filter @lightshop/gateway dev"
+    "dev:gateway": "pnpm --filter @lightshop/gateway dev",
+    "local:up": "scripts/local/stack.sh up",
+    "local:seed": "scripts/local/stack.sh seed",
+    "local:test": "scripts/local/stack.sh test",
+    "local:status": "scripts/local/stack.sh status",
+    "local:logs": "scripts/local/stack.sh logs",
+    "local:down": "scripts/local/stack.sh down",
+    "local:reset": "scripts/local/stack.sh reset"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

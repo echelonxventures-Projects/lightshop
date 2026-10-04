@@ -144,7 +144,7 @@ export class CatalogModule implements OnApplicationBootstrap, OnApplicationShutd
       `tenants: ${this.tenants.all().map((t) => t.id).join(', ')} | storage: ${this.config.databaseUrl ? 'postgres' : 'memory'} | events: ${this.config.eventBus}`,
     );
     if (this.config.seedDemo) {
-      const n = await seedDemoData(this.catalog, this.tenants);
+      const n = await seedDemoData(this.catalog, this.tenants, this.config.demoCatalogFile);
       if (n) this.logger.log(`seeded ${n} demo product(s)`);
     }
     this.relay.start();

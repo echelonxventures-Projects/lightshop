@@ -1,0 +1,11 @@
+# Local stand-in for the production ingress: every store domain serves the storefront, and /graphql on the
+# same domain goes to the gateway (same origin, Host preserved, X-Forwarded-* added).
+:8088 {
+	@graphql path /graphql /graphql/*
+	handle @graphql {
+		reverse_proxy gateway:4000
+	}
+	handle {
+		reverse_proxy web-storefront:5678
+	}
+}

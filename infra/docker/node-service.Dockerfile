@@ -20,6 +20,7 @@ ARG ENTRY=dist/main.js
 ARG VERSION=dev
 ENV NODE_ENV=production \
     TENANTS_DIR=/app/config/tenants \
+    DEMO_CATALOG_FILE=/app/config/demo/catalog.json \
     SERVICE_VERSION=${VERSION} \
     ENTRY=${ENTRY}
 WORKDIR /app

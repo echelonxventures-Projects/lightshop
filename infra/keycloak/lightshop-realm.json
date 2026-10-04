@@ -37,7 +37,7 @@
   "clientScopes": [
     {
       "name": "lightshop",
-      "description": "LightShop claims contract (self-contained, no built-in scopes needed): sub, name, email, tenant_id, roles, seller_id, org_id, aud=lightshop",
+      "description": "LightShop claims contract: sub, tenant_id, roles, seller_id, org_id, aud=lightshop (self-contained; no built-in scopes needed)",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
@@ -52,31 +52,6 @@
           "config": {
             "access.token.claim": "true",
             "introspection.token.claim": "true"
-          }
-        },
-        {
-          "name": "name",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-full-name-mapper",
-          "consentRequired": false,
-          "config": {
-            "id.token.claim": "true",
-            "access.token.claim": "false",
-            "userinfo.token.claim": "true"
-          }
-        },
-        {
-          "name": "email",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-property-mapper",
-          "consentRequired": false,
-          "config": {
-            "user.attribute": "email",
-            "claim.name": "email",
-            "jsonType.label": "String",
-            "id.token.claim": "true",
-            "access.token.claim": "false",
-            "userinfo.token.claim": "true"
           }
         },
         {
@@ -152,6 +127,53 @@
           }
         }
       ]
+    },
+    {
+      "name": "profile",
+      "description": "Standard OIDC profile scope (name)",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "email",
+      "description": "Standard OIDC email scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "email",
+            "claim.name": "email",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "false",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "clients": [
@@ -168,18 +190,33 @@
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://*.localhost:5678/auth/callback",
+        "http://acme.localhost:8088/auth/callback",
+        "http://verde.localhost:8088/auth/callback",
+        "http://bloom.localhost:8088/auth/callback",
+        "http://localhost:8088/auth/callback",
+        "http://acme.localhost:5678/auth/callback",
+        "http://verde.localhost:5678/auth/callback",
+        "http://bloom.localhost:5678/auth/callback",
         "http://localhost:5678/auth/callback"
       ],
       "webOrigins": [
-        "+"
+        "http://acme.localhost:8088",
+        "http://verde.localhost:8088",
+        "http://bloom.localhost:8088",
+        "http://localhost:8088",
+        "http://acme.localhost:5678",
+        "http://verde.localhost:5678",
+        "http://bloom.localhost:5678",
+        "http://localhost:5678"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://*.localhost:5678/*##http://localhost:5678/*"
+        "post.logout.redirect.uris": "http://acme.localhost:8088/*##http://verde.localhost:8088/*##http://bloom.localhost:8088/*##http://localhost:8088/*##http://acme.localhost:5678/*##http://verde.localhost:5678/*##http://bloom.localhost:5678/*##http://localhost:5678/*"
       },
       "defaultClientScopes": [
-        "lightshop"
+        "lightshop",
+        "profile",
+        "email"
       ]
     },
     {
@@ -193,7 +230,9 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "defaultClientScopes": [
-        "lightshop"
+        "lightshop",
+        "profile",
+        "email"
       ]
     }
   ],
@@ -293,6 +332,30 @@
         {
           "type": "password",
           "value": "raj",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "verde-admin",
+      "email": "admin@verde.example",
+      "firstName": "Verde",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "tenant_id": [
+          "verde-wholesale"
+        ]
+      },
+      "realmRoles": [
+        "catalog:admin",
+        "tenant:admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "verde-admin",
           "temporary": false
         }
       ]

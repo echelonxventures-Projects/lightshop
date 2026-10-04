@@ -26,9 +26,12 @@ gateway:
     SUBGRAPHS: catalog=http://catalog/graphql
     RATE_LIMIT_PER_MINUTE: "600"
     TRUST_PROXY: "true"
+  # Served on every store domain at /graphql (same origin as the storefront): the gateway resolves the
+  # store from Host, so it must never sit on a separate shared api.* host.
   ingress:
     enabled: true
-    hosts: []             # api host(s) per cell, e.g. api.us.example.com
+    hosts: []             # same list as webStorefront.ingress.hosts
+    paths: [/graphql]
   networkPolicy:
     enabled: true
     allowFromPods:

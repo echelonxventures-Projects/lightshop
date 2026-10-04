@@ -25,10 +25,17 @@ interface Discovery {
 let discovery: Promise<Discovery> | undefined;
 let jwks: ReturnType<typeof createRemoteJWKSet> | undefined;
 
+/**
+ * Split-horizon IdPs are common (browser uses the public URL; servers use an internal one).
+ * OIDC_DISCOVERY_URL lets the server fetch discovery internally; the issuer must still match OIDC_ISSUER.
+ */
 export function discover(settings: OidcSettings): Promise<Discovery> {
-  discovery ??= fetch(`${settings.issuer}/.well-known/openid-configuration`, { cache: 'no-store' }).then(async (r) => {
+  const url = process.env.OIDC_DISCOVERY_URL ?? `${settings.issuer}/.well-known/openid-configuration`;
+  discovery ??= fetch(url, { cache: 'no-store' }).then(async (r) => {
     if (!r.ok) throw new Error(`OIDC discovery failed: ${r.status}`);
-    return (await r.json()) as Discovery;
+    const d = (await r.json()) as Discovery;
+    if (d.issuer.replace(/\/$/, '') !== settings.issuer) throw new Error(`OIDC issuer mismatch: ${d.issuer} != ${settings.issuer}`);
+    return d;
   });
   discovery.catch(() => (discovery = undefined));
   return discovery;

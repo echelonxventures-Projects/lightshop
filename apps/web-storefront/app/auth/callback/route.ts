@@ -13,6 +13,13 @@ export async function GET(req: NextRequest) {
   const origin = await publicOrigin();
   if (!settings || !store) return NextResponse.redirect(`${origin}/`);
 
+  // The IdP reports failures on the redirect (RFC 6749 §4.1.2.1); surface them instead of guessing.
+  const idpError = req.nextUrl.searchParams.get('error');
+  if (idpError) {
+    console.error(`sign-in rejected by identity provider: ${idpError} ${req.nextUrl.searchParams.get('error_description') ?? ''}`);
+    return fail(origin, idpError === 'access_denied' ? 'denied' : 'failed');
+  }
+
   const login = await unseal<LoginState>(req.cookies.get(LOGIN_COOKIE)?.value);
   const code = req.nextUrl.searchParams.get('code');
   if (!login || !code || req.nextUrl.searchParams.get('state') !== login.state || login.tenantId !== store.tenant.id) {
@@ -29,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     const ttl = Math.max(60, Math.min(tokens.expires_in ?? 900, 8 * 3600));
     const session: Session = {
-      sub: id.sub, name: id.name, email: id.email, tenantId, accessToken: tokens.access_token,
+      sub: id.sub, name: id.name, email: id.email, tenantId, accessToken: tokens.access_token, idToken: tokens.id_token,
       exp: access.exp ?? Math.floor(Date.now() / 1000) + ttl,
     };
     const res = NextResponse.redirect(`${origin}${login.returnTo}`);
