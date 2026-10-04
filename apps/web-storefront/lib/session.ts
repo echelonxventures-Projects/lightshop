@@ -13,6 +13,8 @@ export interface Session {
   email?: string;
   tenantId: string;
   accessToken: string;
+  /** Sent as id_token_hint on logout so the IdP ends its session without an extra confirmation page. */
+  idToken?: string;
   exp: number;
 }
 

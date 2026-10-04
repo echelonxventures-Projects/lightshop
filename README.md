@@ -21,6 +21,8 @@ Then open two differently branded stores served by the **same** process:
 - http://acme.localhost:5678: *Acme Mart*, a B2C marketplace with a multi-seller buy box (USD)
 - http://verde.localhost:5678: *Verde Wholesale*, B2B with MOQ, RFQ and INR, localized to Hindi with `hi-IN`
 
+**Production-like, on your machine:** `pnpm local:up` runs the real images in production mode with Keycloak, Temporal, Kafka, Postgres and observability behind an ingress, then `pnpm local:test` verifies it end to end ([runbook](docs/runbooks/local-production.md)).
+
 To use real Postgres and Kafka: `cp .env.example .env && pnpm infra:up`. See the [local development runbook](docs/runbooks/local-development.md).
 
 ## Repository layout

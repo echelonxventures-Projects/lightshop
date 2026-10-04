@@ -18,6 +18,7 @@ export interface CatalogConfig {
   tenantsRefreshMs: number;
   /** Loads demo products. Off unless explicitly enabled. */
   seedDemo: boolean;
+  demoCatalogFile: string;
   outboxIntervalMs: number;
   auth: AuthConfig;
   /**
@@ -49,6 +50,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): CatalogConfig 
     tenantsUrl: env.TENANTS_URL || undefined,
     tenantsRefreshMs: Number(env.TENANTS_REFRESH_MS ?? 15_000),
     seedDemo: env.SEED_DEMO === 'true',
+    demoCatalogFile: env.DEMO_CATALOG_FILE ?? join(__dirname, '..', '..', '..', 'config', 'demo', 'catalog.json'),
     outboxIntervalMs: Number(env.OUTBOX_INTERVAL_MS ?? 500),
     auth,
     gatewaySecret: env.GATEWAY_SHARED_SECRET || undefined,

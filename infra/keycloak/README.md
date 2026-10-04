@@ -4,7 +4,8 @@
 (`start-dev --import-realm`). It encodes the platform's IdP-agnostic **claims contract**:
 
 The `lightshop` client scope is self-contained: it emits every claim below itself, so it doesn't depend on
-Keycloak's built-in scopes. Since Keycloak 25, `sub` comes from the built-in `basic` scope, which a realm that
+Keycloak's built-in scopes. The standard `profile` and `email` scopes are defined too, so any OIDC client that
+requests `openid profile email` works. Since Keycloak 25, `sub` comes from the built-in `basic` scope, which a realm that
 defines its own scopes doesn't get.
 
 | Claim (access token) | Source | Used by |
@@ -19,7 +20,10 @@ Clients: `lightshop-storefront` (confidential, authorization code + PKCE S256, o
 domains) and `lightshop-ci` (password grant, **CI/dev only, so delete it in real environments**).
 
 Dev users (password = username): `ana` (acme buyer), `acme-admin`, `gadgetco` (acme seller `sel_gadgetco`),
-`raj` (verde buyer, org `org_raj_traders`), `ops` (platform admin).
+`raj` (verde buyer, org `org_raj_traders`), `verde-admin`, `ops` (platform admin).
+
+Redirect URIs are explicit per store origin (Keycloak does not support wildcard subdomains). In production
+the tenant-registry onboarding adds each new store domain to the client.
 
 ## Other providers
 

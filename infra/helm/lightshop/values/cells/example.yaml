@@ -9,7 +9,7 @@ global:
 gateway:
   ingress:
     className: traefik                    # or envoy, haproxy, nginx, alb, gce...
-    hosts: [api.example.com]
+    hosts: [shop.example.com, www.brand-two.example]   # every store domain; served at /graphql
   networkPolicy:
     allowFromNamespaces: [traefik]
 webStorefront:
@@ -18,6 +18,9 @@ webStorefront:
     hosts: [shop.example.com, www.brand-two.example]
   networkPolicy:
     allowFromNamespaces: [traefik]
+  env:
+    # Split-horizon IdP: browser uses OIDC_ISSUER, the server fetches discovery internally (optional).
+    # OIDC_DISCOVERY_URL: http://keycloak-http.identity/realms/lightshop/.well-known/openid-configuration
 # Workload identity for cloud APIs (only if a service needs one):
 # catalog:
 #   serviceAccount:

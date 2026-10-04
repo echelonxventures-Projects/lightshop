@@ -44,6 +44,8 @@ ingress:
   className: ""
   annotations: {}
   hosts: []
+  # Path prefixes routed to this workload on every host (e.g. [/graphql] for the gateway on store domains).
+  paths: [/]
   tls:
     enabled: true
     # cert-manager ClusterIssuer; empty = bring your own secret
